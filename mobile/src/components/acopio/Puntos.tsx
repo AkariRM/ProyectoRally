@@ -8,13 +8,14 @@ import { useUsuario } from '@/lib/usuario';
 import type { Municipio, PuntoAcopio, TipoMaterial } from '@/lib/types';
 import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
-import { Aviso, Boton, BotonChico, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
+import ModalPasos from '@/components/ModalPasos';
+import { Aviso, Boton, BotonChico, Campo, colores, fecha, ListaDesplegable, Opciones, Seccion, Tarjeta } from '@/components/ui';
 
 const MUNICIPIOS: Municipio[] = ['Jiquilpan', 'Sahuayo', 'Otro'];
 const TIPOS = ['parque', 'plaza', 'escuela', 'vivero', 'domicilio', 'otro'] as const;
 type Tipo = (typeof TIPOS)[number];
 
-// Formulario para crear o editar un punto de acopio (solo admin)
+// Formulario para crear o editar un punto de acopio (solo admin), en 2 pasos
 function FormPunto({ punto, onListo, onCancelar }: { punto?: PuntoAcopio; onListo: () => void; onCancelar: () => void }) {
   const [nombre, setNombre] = useState(punto?.nombre ?? '');
   const [direccion, setDireccion] = useState(punto?.direccion ?? '');
@@ -51,20 +52,118 @@ function FormPunto({ punto, onListo, onCancelar }: { punto?: PuntoAcopio; onList
   };
 
   return (
-    <View style={styles.form}>
-      <Text style={styles.formTitulo}>{punto ? `Editar: ${punto.nombre}` : 'Nuevo punto de acopio'}</Text>
-      <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} placeholder="Ej: Vivero del ITJ" />
-      <Campo etiqueta="Dirección" value={direccion} onChangeText={setDireccion} placeholder="Calle, número, colonia" />
-      <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
-      <Opciones etiqueta="Tipo" opciones={TIPOS} valor={tipo} onChange={setTipo} />
-      <Boton texto="📍 Usar mi ubicación actual" onPress={usarGps} secundario />
-      <View style={styles.fila}>
-        <View style={{ flex: 1 }}><Campo etiqueta="Latitud" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" placeholder="19.99" /></View>
-        <View style={{ flex: 1 }}><Campo etiqueta="Longitud" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" placeholder="-102.71" /></View>
-      </View>
-      <Boton texto={punto ? 'Guardar cambios' : 'Crear punto'} onPress={guardar} cargando={enviando} />
-      <Boton texto="Cancelar" onPress={onCancelar} secundario color={colores.textoSuave} />
-    </View>
+    <ModalPasos
+      titulo={punto ? `Editar: ${punto.nombre}` : 'Nuevo punto de acopio'}
+      onCerrar={onCancelar}
+      onFinal={guardar}
+      cargando={enviando}
+      textoFinal={punto ? 'Guardar cambios' : 'Crear punto'}
+      pasos={[
+        {
+          titulo: 'Datos',
+          falta: nombre.trim() ? null : 'Escribe el nombre del punto',
+          contenido: (
+            <>
+              <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} placeholder="Ej: Vivero del ITJ" />
+              <Campo etiqueta="Dirección" value={direccion} onChangeText={setDireccion} placeholder="Calle, número, colonia" />
+              <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
+              <Opciones etiqueta="Tipo" opciones={TIPOS} valor={tipo} onChange={setTipo} />
+            </>
+          ),
+        },
+        {
+          titulo: 'Ubicación',
+          contenido: (
+            <>
+              <Boton texto="📍 Usar mi ubicación actual" onPress={usarGps} secundario />
+              <View style={styles.fila}>
+                <View style={{ flex: 1 }}><Campo etiqueta="Latitud" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" placeholder="19.99" /></View>
+                <View style={{ flex: 1 }}><Campo etiqueta="Longitud" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" placeholder="-102.71" /></View>
+              </View>
+            </>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+// Registrar una entrega de poda fresca en un punto, en 3 pasos
+function FormEntrega({ puntos, puntoInicial, onListo, onCerrar }: {
+  puntos: PuntoAcopio[]; puntoInicial?: string; onListo: () => void; onCerrar: () => void;
+}) {
+  const [puntoId, setPuntoId] = useState<string | null>(puntoInicial ?? null);
+  const [kg, setKg] = useState('');
+  const [tipoMaterial, setTipoMaterial] = useState<TipoMaterial | null>(null);
+  const { data: catalogos } = useCatalogos();
+  const [especieArbol, setEspecieArbol] = useState('');
+  const [notas, setNotas] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  const enviar = async () => {
+    setEnviando(true);
+    try {
+      await api.crearEntregaPoda({
+        puntoId: puntoId!, kg: Number(kg), notas, tipoMaterial: tipoMaterial ?? undefined, especieArbol: especieArbol || undefined,
+      });
+      alerta('¡Gracias!', 'Entrega de poda registrada.');
+      onListo();
+    } catch (e) {
+      alerta('Error', (e as Error).message);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <ModalPasos
+      titulo="Entrega de poda fresca"
+      color={colores.tierra}
+      onCerrar={onCerrar}
+      onFinal={enviar}
+      cargando={enviando}
+      textoFinal="Registrar entrega"
+      pasos={[
+        {
+          titulo: 'Punto de acopio',
+          falta: puntoId ? null : 'Elige un punto de acopio',
+          contenido: (
+            <Opciones
+              etiqueta="¿Dónde la entregas?"
+              opciones={puntos.map(p => p.id)}
+              nombres={Object.fromEntries(puntos.map(p => [p.id, p.nombre]))}
+              valor={puntoId}
+              onChange={setPuntoId}
+            />
+          ),
+        },
+        {
+          titulo: 'Material',
+          contenido: (
+            <>
+              <Opciones
+                etiqueta="Tipo de material"
+                opciones={(catalogos?.tiposMaterial ?? []).map(t => t.id)}
+                nombres={nombresDe(catalogos?.tiposMaterial)}
+                valor={tipoMaterial}
+                onChange={setTipoMaterial}
+              />
+              <Campo etiqueta="Árbol (opcional)" value={especieArbol} onChangeText={setEspecieArbol} placeholder="Ej: Ficus benjamina, fresno, jacaranda" />
+            </>
+          ),
+        },
+        {
+          titulo: 'Peso',
+          falta: Number(kg) > 0 ? null : 'Escribe cuántos kg entregas',
+          contenido: (
+            <>
+              <Campo etiqueta="Kilogramos (fresca)" value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder="Ej: 5.5" ayuda="Pesa la bolsa o costal antes de entregarlo" />
+              <Campo etiqueta="Notas (opcional)" value={notas} onChangeText={setNotas} multiline placeholder="Ej: hojas y ramas delgadas, poda de la plaza" />
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -78,20 +177,16 @@ export default function Puntos() {
     return { puntos, entregas, dispersiones };
   });
 
-  const [puntoId, setPuntoId] = useState<string | null>(null);
-  const [kg, setKg] = useState('');
-  const [tipoMaterial, setTipoMaterial] = useState<TipoMaterial | null>(null);
-  const { data: catalogos } = useCatalogos();
-  const [especieArbol, setEspecieArbol] = useState('');
-  const [notas, setNotas] = useState('');
-  const [enviando, setEnviando] = useState(false);
   const [editando, setEditando] = useState<string | 'nuevo' | null>(null);
+  // null: cerrado · '': sin punto elegido · id: con ese punto ya elegido
+  const [entregando, setEntregando] = useState<string | null>(null);
 
   const puntos = data?.puntos ?? [];
   const entregas = data?.entregas ?? [];
   const kgPorPunto = (id: string) =>
     entregas.filter(e => e.puntoId === id).reduce((t, e) => t + e.kg, 0);
   const nombrePunto = Object.fromEntries(puntos.map(p => [p.id, p.nombre]));
+  const puntoEditado = puntos.find(p => p.id === editando);
 
   const marcadores = [
     ...puntos
@@ -100,23 +195,9 @@ export default function Puntos() {
     ...(data?.dispersiones ?? []).map(d => ({ id: d.id, lat: d.lat, lng: d.lng, titulo: d.zona, descripcion: `${d.cantidad} píldoras`, color: 'green' })),
   ];
 
-  const enviar = async () => {
+  const entregar = (puntoId = '') => {
     if (!usuario) return alerta('Inicia sesión', 'Entra con tu correo en Inicio para registrar entregas.');
-    if (!puntoId) return alerta('Falta dato', 'Elige un punto de acopio');
-    setEnviando(true);
-    try {
-      await api.crearEntregaPoda({
-        puntoId, kg: Number(kg), notas, tipoMaterial: tipoMaterial ?? undefined, especieArbol: especieArbol || undefined,
-      });
-      setKg('');
-      setNotas('');
-      alerta('¡Gracias!', 'Entrega de poda registrada.');
-      recargar();
-    } catch (e) {
-      alerta('Error', (e as Error).message);
-    } finally {
-      setEnviando(false);
-    }
+    setEntregando(puntoId);
   };
 
   const eliminar = async (p: PuntoAcopio) => {
@@ -129,8 +210,9 @@ export default function Puntos() {
     }
   };
 
-  const terminarEdicion = () => {
+  const terminar = () => {
     setEditando(null);
+    setEntregando(null);
     recargar();
   };
 
@@ -140,51 +222,30 @@ export default function Puntos() {
       <Mapa puntos={marcadores} />
       <Text style={styles.leyenda}>🟠 Punto de acopio   🟢 Dispersión de píldoras</Text>
 
-      <Seccion>Puntos de acopio</Seccion>
-      {esAdmin && editando !== 'nuevo' ? (
-        <BotonChico texto="+ Agregar punto de acopio" relleno onPress={() => setEditando('nuevo')} />
-      ) : null}
-      {editando === 'nuevo' ? <FormPunto onListo={terminarEdicion} onCancelar={() => setEditando(null)} /> : null}
+      <Boton texto="➕ Registrar entrega de poda fresca" color={colores.tierra} onPress={() => entregar()} />
 
-      {puntos.map(p => (
-        <Tarjeta key={p.id} style={{ marginTop: 8 }}>
-          {editando === p.id ? (
-            <FormPunto punto={p} onListo={terminarEdicion} onCancelar={() => setEditando(null)} />
-          ) : (
-            <>
-              <Text style={styles.nombre}>{p.nombre}</Text>
-              <Text style={styles.detalle}>{p.direccion}{p.municipio ? ` · ${p.municipio}` : ''}{p.tipo ? ` · ${p.tipo}` : ''}</Text>
-              <Text style={styles.kg}>{kgPorPunto(p.id).toFixed(1)} kg recibidos</Text>
+      <ListaDesplegable
+        titulo="Puntos de acopio"
+        vacio="Todavía no hay puntos de acopio."
+        extra={esAdmin ? <BotonChico texto="+ Agregar punto de acopio" relleno onPress={() => setEditando('nuevo')} /> : null}
+      >
+        {puntos.map(p => (
+          <Tarjeta key={p.id} style={{ marginTop: 8 }}>
+            <Text style={styles.nombre}>{p.nombre}</Text>
+            <Text style={styles.detalle}>{p.direccion}{p.municipio ? ` · ${p.municipio}` : ''}{p.tipo ? ` · ${p.tipo}` : ''}</Text>
+            <Text style={styles.kg}>{kgPorPunto(p.id).toFixed(1)} kg recibidos</Text>
+            <View style={styles.acciones}>
+              <BotonChico texto="Entregar aquí" color={colores.tierra} onPress={() => entregar(p.id)} />
               {esAdmin ? (
-                <View style={styles.acciones}>
+                <>
                   <BotonChico texto="✏️ Editar" onPress={() => setEditando(p.id)} />
                   <BotonChico texto="🗑️ Eliminar" color={colores.rojo} onPress={() => eliminar(p)} />
-                </View>
+                </>
               ) : null}
-            </>
-          )}
-        </Tarjeta>
-      ))}
-
-      <Seccion>Registrar entrega de poda fresca</Seccion>
-      <Opciones
-        etiqueta="Punto de acopio"
-        opciones={puntos.map(p => p.id)}
-        nombres={nombrePunto}
-        valor={puntoId}
-        onChange={setPuntoId}
-      />
-      <Opciones
-        etiqueta="Tipo de material"
-        opciones={(catalogos?.tiposMaterial ?? []).map(t => t.id)}
-        nombres={nombresDe(catalogos?.tiposMaterial)}
-        valor={tipoMaterial}
-        onChange={setTipoMaterial}
-      />
-      <Campo etiqueta="Árbol (opcional)" value={especieArbol} onChangeText={setEspecieArbol} placeholder="Ej: Ficus benjamina, fresno, jacaranda" />
-      <Campo etiqueta="Kilogramos (fresca)" value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder="Ej: 5.5" ayuda="Pesa la bolsa o costal antes de entregarlo" />
-      <Campo etiqueta="Notas (opcional)" value={notas} onChangeText={setNotas} multiline placeholder="Ej: hojas y ramas delgadas, poda de la plaza" />
-      <Boton texto="Registrar entrega" color={colores.tierra} onPress={enviar} cargando={enviando} />
+            </View>
+          </Tarjeta>
+        ))}
+      </ListaDesplegable>
 
       {entregas.length ? <Seccion>Últimas entregas</Seccion> : null}
       {[...entregas].reverse().slice(0, 10).map(e => (
@@ -193,6 +254,12 @@ export default function Puntos() {
           <Text style={styles.detalle}>{fecha(e.creadoEn)}{e.notas ? ` · ${e.notas}` : ''}</Text>
         </Tarjeta>
       ))}
+
+      {editando === 'nuevo' ? <FormPunto onListo={terminar} onCancelar={() => setEditando(null)} /> : null}
+      {puntoEditado ? <FormPunto punto={puntoEditado} onListo={terminar} onCancelar={() => setEditando(null)} /> : null}
+      {entregando !== null ? (
+        <FormEntrega puntos={puntos} puntoInicial={entregando || undefined} onListo={terminar} onCerrar={() => setEntregando(null)} />
+      ) : null}
     </>
   );
 }
@@ -203,7 +270,5 @@ const styles = StyleSheet.create({
   detalle: { fontSize: 12, color: colores.textoSuave, marginTop: 2 },
   kg: { fontSize: 13, color: colores.tierra, marginTop: 4, fontWeight: '600' },
   acciones: { flexDirection: 'row', flexWrap: 'wrap' },
-  form: { backgroundColor: '#fff', borderRadius: 12, padding: 4, marginTop: 8 },
-  formTitulo: { fontSize: 16, fontWeight: '700', color: colores.verde, marginBottom: 10 },
   fila: { flexDirection: 'row', gap: 8 },
 });

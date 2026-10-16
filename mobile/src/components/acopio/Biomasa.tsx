@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { api } from '@/lib/api';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
-import type { Fraccion, TipoProceso } from '@/lib/types';
-import { Aviso, Boton, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
+import type { Fraccion, InventarioBiomasa, TipoProceso } from '@/lib/types';
+import ModalPasos from '@/components/ModalPasos';
+import { Aviso, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
 import { alerta } from '@/lib/alerta';
 
 const TIPOS: TipoProceso[] = ['secado', 'triturado', 'pirolisis', 'molienda'];
@@ -47,33 +48,27 @@ function Etapa({ emoji, titulo, kg, color, ultimo }: { emoji: string; titulo: st
   );
 }
 
-// Inventario y procesamiento de la biomasa: fresca → seca → triturada → usada en lotes
-export default function Biomasa() {
+// Registrar un proceso en 3 pasos: cómo se hace → pesos → detalles
+function FormProceso({ tipo, inv, onListo, onCerrar }: {
+  tipo: TipoProceso; inv?: InventarioBiomasa; onListo: () => void; onCerrar: () => void;
+}) {
   const { usuario } = useUsuario();
-  const { data, error, recargar } = useData(async () => {
-    const [inventario, procesos] = await Promise.all([api.inventarioBiomasa(), api.procesosBiomasa()]);
-    return { inventario, procesos };
-  });
-
-  const [tipo, setTipo] = useState<TipoProceso | null>('secado');
   const [kgEntrada, setKgEntrada] = useState('');
   const [kgSalida, setKgSalida] = useState('');
   const [fraccion, setFraccion] = useState<Fraccion | null>(null);
+  const [temperatura, setTemperatura] = useState('');
   const [metodo, setMetodo] = useState('');
   const [dias, setDias] = useState('');
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
 
-  const inv = data?.inventario;
+  const proc = PROCESO[tipo];
   const disponible = tipo === 'secado' ? inv?.fresca : inv?.seca;
-  const proc = PROCESO[tipo ?? 'secado'];
-  const [temperatura, setTemperatura] = useState('');
   const entrada = Number(kgEntrada);
   const salida = Number(kgSalida);
   const rendimiento = entrada > 0 && kgSalida !== '' ? (salida / entrada) * 100 : null;
 
   const enviar = async () => {
-    if (!tipo) return;
     setEnviando(true);
     try {
       await api.crearProcesoBiomasa({
@@ -82,16 +77,80 @@ export default function Biomasa() {
         temperaturaC: tipo === 'pirolisis' && temperatura ? Number(temperatura) : undefined,
         metodo, dias: dias ? Number(dias) : undefined, notas, usuarioId: usuario?.id,
       });
-      setKgEntrada('');
-      setKgSalida('');
-      setNotas('');
-      recargar();
+      alerta('Proceso registrado', `${proc.nombre}: ${entrada} → ${salida} kg`);
+      onListo();
     } catch (e) {
       alerta('Error', (e as Error).message);
     } finally {
       setEnviando(false);
     }
   };
+
+  return (
+    <ModalPasos
+      titulo={proc.nombre}
+      color={colores.tierra}
+      onCerrar={onCerrar}
+      onFinal={enviar}
+      cargando={enviando}
+      textoFinal="Registrar proceso"
+      pasos={[
+        {
+          titulo: 'Cómo se hace',
+          contenido: (
+            <>
+              <Aviso tipo="info" texto={proc.ayuda} />
+              <Tarjeta>
+                <Text style={styles.linea}>Entra: <Text style={styles.bold}>poda {proc.entra}</Text></Text>
+                <Text style={styles.linea}>Sale: <Text style={styles.bold}>{proc.sale}</Text></Text>
+                <Text style={styles.linea}>Disponible ahora: <Text style={styles.bold}>{disponible ?? 0} kg</Text></Text>
+              </Tarjeta>
+            </>
+          ),
+        },
+        {
+          titulo: 'Pesos',
+          falta: entrada > 0 && kgSalida !== '' ? null : 'Escribe los kg de entrada y de salida',
+          contenido: (
+            <>
+              <Campo etiqueta={`Kg ${proc.entra} (entrada)`} value={kgEntrada} onChangeText={setKgEntrada} keyboardType="decimal-pad" ayuda={`Disponible: ${disponible ?? 0} kg`} />
+              <Campo etiqueta={`Kg ${proc.sale} (salida)`} value={kgSalida} onChangeText={setKgSalida} keyboardType="decimal-pad" />
+              {tipo === 'pirolisis' ? (
+                <Campo etiqueta="Temperatura alcanzada (°C)" value={temperatura} onChangeText={setTemperatura} keyboardType="number-pad" ayuda="Debe superar 450 °C" />
+              ) : null}
+              {rendimiento !== null ? (
+                <Text style={styles.calculo}>
+                  {tipo === 'secado' ? `Humedad perdida: ${(100 - rendimiento).toFixed(1)} %` : `Rendimiento: ${rendimiento.toFixed(1)} %`}
+                </Text>
+              ) : null}
+            </>
+          ),
+        },
+        {
+          titulo: 'Detalles',
+          contenido: (
+            <>
+              {tipo === 'triturado' ? <Opciones etiqueta="Fracción" opciones={FRACCIONES} valor={fraccion} onChange={setFraccion} nombres={{ fina: 'Escamas 2–3 mm (objetivo)', media: 'Gruesa > 3 mm (volver a moler)', mixta: 'Mixta' }} /> : null}
+              <Campo etiqueta="Método" value={metodo} onChangeText={setMetodo} placeholder={proc.metodo} />
+              {tipo === 'secado' ? <Campo etiqueta="Días de secado" value={dias} onChangeText={setDias} keyboardType="number-pad" /> : null}
+              <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline />
+            </>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+// Inventario y procesamiento de la biomasa: fresca → seca → triturada → usada en lotes
+export default function Biomasa() {
+  const { data, error, recargar } = useData(async () => {
+    const [inventario, procesos] = await Promise.all([api.inventarioBiomasa(), api.procesosBiomasa()]);
+    return { inventario, procesos };
+  });
+  const [registrando, setRegistrando] = useState<TipoProceso | null>(null);
+
+  const inv = data?.inventario;
 
   return (
     <>
@@ -127,26 +186,15 @@ export default function Biomasa() {
       </Tarjeta>
 
       <Seccion>Registrar proceso</Seccion>
-      <Opciones etiqueta="Proceso" opciones={TIPOS} valor={tipo} onChange={setTipo} nombres={Object.fromEntries(TIPOS.map(t => [t, PROCESO[t].nombre]))} />
-      <Aviso
-        tipo="info"
-        texto={`${proc.ayuda} Disponible: ${disponible ?? 0} kg de poda ${proc.entra}.`}
-      />
-      <Campo etiqueta={`Kg ${proc.entra} (entrada)`} value={kgEntrada} onChangeText={setKgEntrada} keyboardType="decimal-pad" />
-      <Campo etiqueta={`Kg ${proc.sale} (salida)`} value={kgSalida} onChangeText={setKgSalida} keyboardType="decimal-pad" />
-      {tipo === 'pirolisis' ? (
-        <Campo etiqueta="Temperatura alcanzada (°C)" value={temperatura} onChangeText={setTemperatura} keyboardType="number-pad" ayuda="Debe superar 450 °C" />
-      ) : null}
-      {rendimiento !== null ? (
-        <Text style={styles.calculo}>
-          {tipo === 'secado' ? `Humedad perdida: ${(100 - rendimiento).toFixed(1)} %` : `Rendimiento: ${rendimiento.toFixed(1)} %`}
-        </Text>
-      ) : null}
-      {tipo === 'triturado' ? <Opciones etiqueta="Fracción" opciones={FRACCIONES} valor={fraccion} onChange={setFraccion} nombres={{ fina: 'Escamas 2–3 mm (objetivo)', media: 'Gruesa > 3 mm (volver a moler)', mixta: 'Mixta' }} /> : null}
-      <Campo etiqueta="Método" value={metodo} onChangeText={setMetodo} placeholder={proc.metodo} />
-      {tipo === 'secado' ? <Campo etiqueta="Días de secado" value={dias} onChangeText={setDias} keyboardType="number-pad" /> : null}
-      <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline />
-      <Boton texto="Registrar proceso" color={colores.tierra} onPress={enviar} cargando={enviando} />
+      <View style={styles.procesos}>
+        {TIPOS.map(t => (
+          <TouchableOpacity key={t} style={styles.proceso} onPress={() => setRegistrando(t)} accessibilityRole="button">
+            <Text style={styles.procesoNombre}>{PROCESO[t].nombre}</Text>
+            <Text style={styles.procesoFlujo}>{PROCESO[t].entra} → {PROCESO[t].sale}</Text>
+            <Text style={styles.procesoAccion}>Registrar ›</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {data?.procesos.length ? <Seccion>Historial</Seccion> : null}
       {[...(data?.procesos ?? [])].reverse().slice(0, 15).map(p => (
@@ -159,6 +207,15 @@ export default function Biomasa() {
           </Text>
         </Tarjeta>
       ))}
+
+      {registrando ? (
+        <FormProceso
+          tipo={registrando}
+          inv={inv}
+          onCerrar={() => setRegistrando(null)}
+          onListo={() => { setRegistrando(null); recargar(); }}
+        />
+      ) : null}
     </>
   );
 }
@@ -174,6 +231,15 @@ const styles = StyleSheet.create({
   linea: { fontSize: 13, color: colores.texto, marginBottom: 4 },
   bold: { fontWeight: '700' },
   calculo: { fontSize: 14, fontWeight: '700', color: colores.tierra, marginTop: -6, marginBottom: 12 },
+  procesos: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  proceso: {
+    flexBasis: '47%', flexGrow: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: colores.tierraClaro, elevation: 1,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+  },
+  procesoNombre: { fontSize: 15, fontWeight: '700', color: colores.texto },
+  procesoFlujo: { fontSize: 12, color: colores.textoSuave, marginTop: 4 },
+  procesoAccion: { fontSize: 13, fontWeight: '700', color: colores.tierra, marginTop: 8 },
   nombre: { fontSize: 15, fontWeight: '600', color: colores.texto },
   detalle: { fontSize: 12, color: colores.textoSuave, marginTop: 2 },
 });

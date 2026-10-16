@@ -7,6 +7,7 @@ import { useUsuario } from '@/lib/usuario';
 import type { EstadoSolicitud, Municipio, ParadaRuta, Solicitud, TipoMaterial } from '@/lib/types';
 import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
+import ModalPasos from '@/components/ModalPasos';
 import { Aviso, Boton, BotonChico, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
 import { alerta } from '@/lib/alerta';
 
@@ -24,8 +25,9 @@ const ETIQUETA_ESTADO: Record<EstadoSolicitud, string> = {
   cancelada: '⚪ Cancelada',
 };
 
-function CerrarSolicitud({ solicitud, puntos, onListo }: {
-  solicitud: Solicitud; puntos: { id: string; nombre: string }[]; onListo: () => void;
+// "Ya la recogí": kg reales y punto al que se llevó, en 2 pasos
+function CerrarSolicitud({ solicitud, puntos, onListo, onCerrar }: {
+  solicitud: Solicitud; puntos: { id: string; nombre: string }[]; onListo: () => void; onCerrar: () => void;
 }) {
   const { usuario } = useUsuario();
   const [kg, setKg] = useState(solicitud.kgEstimados ? String(solicitud.kgEstimados) : '');
@@ -33,11 +35,10 @@ function CerrarSolicitud({ solicitud, puntos, onListo }: {
   const [enviando, setEnviando] = useState(false);
 
   const guardar = async () => {
-    if (!puntoId) return alerta('Falta dato', 'Elige a qué punto de acopio se llevó');
     setEnviando(true);
     try {
       await api.cambiarEstadoSolicitud(solicitud.id, {
-        estado: 'recolectada', kgReales: Number(kg), puntoId, recolectorId: usuario?.id,
+        estado: 'recolectada', kgReales: Number(kg), puntoId: puntoId!, recolectorId: usuario?.id,
       });
       onListo();
     } catch (e) {
@@ -48,27 +49,44 @@ function CerrarSolicitud({ solicitud, puntos, onListo }: {
   };
 
   return (
-    <View style={styles.subform}>
-      <Campo etiqueta="Kg reales recolectados" value={kg} onChangeText={setKg} keyboardType="decimal-pad" />
-      <Opciones
-        etiqueta="Se llevó al punto"
-        opciones={puntos.map(p => p.id)}
-        nombres={Object.fromEntries(puntos.map(p => [p.id, p.nombre]))}
-        valor={puntoId}
-        onChange={setPuntoId}
-      />
-      <Boton texto="Confirmar recolección" color={colores.tierra} onPress={guardar} cargando={enviando} />
-    </View>
+    <ModalPasos
+      titulo="Confirmar recolección"
+      color={colores.tierra}
+      onCerrar={onCerrar}
+      onFinal={guardar}
+      cargando={enviando}
+      textoFinal="Confirmar recolección"
+      pasos={[
+        {
+          titulo: 'Cantidad',
+          falta: Number(kg) > 0 ? null : 'Escribe los kg que recogiste',
+          contenido: (
+            <>
+              <Text style={styles.contexto}>{solicitud.direccion}</Text>
+              <Campo etiqueta="Kg reales recolectados" value={kg} onChangeText={setKg} keyboardType="decimal-pad" />
+            </>
+          ),
+        },
+        {
+          titulo: 'Destino',
+          falta: puntoId ? null : 'Elige a qué punto de acopio se llevó',
+          contenido: (
+            <Opciones
+              etiqueta="Se llevó al punto"
+              opciones={puntos.map(p => p.id)}
+              nombres={Object.fromEntries(puntos.map(p => [p.id, p.nombre]))}
+              valor={puntoId}
+              onChange={setPuntoId}
+            />
+          ),
+        },
+      ]}
+    />
   );
 }
 
-export default function Solicitudes() {
-  const { usuario } = useUsuario();
-  const { data, error, recargar } = useData(async () => {
-    const [solicitudes, puntos] = await Promise.all([api.solicitudes(), api.puntosAcopio()]);
-    return { solicitudes, puntos };
-  });
-
+// Pedir que recojan poda, en 3 pasos: dónde, quién y qué
+function NuevaSolicitud({ onListo, onCerrar }: { onListo: () => void; onCerrar: () => void }) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [nombre, setNombre] = useState('');
   const [contacto, setContacto] = useState('');
@@ -79,38 +97,98 @@ export default function Solicitudes() {
   const { data: catalogos } = useCatalogos();
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [ruta, setRuta] = useState<{ paradas: ParadaRuta[]; totalKm: number; googleMapsUrl: string | null } | null>(null);
-  const [destinoRuta, setDestinoRuta] = useState<string | null>(null);
-  const [calculando, setCalculando] = useState(false);
-  const [cerrando, setCerrando] = useState<string | null>(null);
-  const [verCerradas, setVerCerradas] = useState(false);
-
-  const solicitudes = data?.solicitudes ?? [];
-  const puntos = data?.puntos ?? [];
-  const abiertas = solicitudes.filter(s => s.estado === 'pendiente' || s.estado === 'asignada');
-  const visibles = verCerradas ? solicitudes : abiertas;
 
   const enviar = async () => {
-    if (!coords) return alerta('Falta ubicación', 'Toca "Tomar mi ubicación" donde está la poda.');
     setEnviando(true);
     try {
       await api.crearSolicitud({
         nombre, contacto, direccion, municipio: municipio ?? undefined,
-        lat: coords.lat, lng: coords.lng, kgEstimados: kg ? Number(kg) : undefined, notas,
+        lat: coords!.lat, lng: coords!.lng, kgEstimados: kg ? Number(kg) : undefined, notas,
         tipoMaterial: tipoMaterial ?? undefined,
       });
-      setDireccion('');
-      setKg('');
-      setNotas('');
-      setCoords(null);
       alerta('Solicitud enviada', 'Un voluntario pasará a recoger la poda.');
-      recargar();
+      onListo();
     } catch (e) {
       alerta('Error', (e as Error).message);
     } finally {
       setEnviando(false);
     }
   };
+
+  return (
+    <ModalPasos
+      titulo="Pedir que recojan poda"
+      color={colores.tierra}
+      onCerrar={onCerrar}
+      onFinal={enviar}
+      cargando={enviando}
+      textoFinal="Enviar solicitud"
+      pasos={[
+        {
+          titulo: 'Dónde',
+          falta: coords ? null : 'Toca "Tomar mi ubicación" donde está la poda',
+          contenido: (
+            <>
+              <Aviso tipo="info" texto="¿Podaste un ficus en tu casa, negocio o escuela? Pide que pasen por las hojas y ramas." />
+              <Boton
+                texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : '📍 Tomar mi ubicación'}
+                onPress={async () => setCoords(await obtenerUbicacion('indicar dónde está la poda'))}
+                secundario={!!coords}
+              />
+              <Campo etiqueta="Dirección / referencia" value={direccion} onChangeText={setDireccion} placeholder="Ej: Hidalgo 45, portón verde" />
+              <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
+            </>
+          ),
+        },
+        {
+          titulo: 'Quién',
+          contenido: (
+            <>
+              <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} />
+              <Campo etiqueta="Teléfono (opcional)" value={contacto} onChangeText={setContacto} keyboardType="phone-pad" />
+            </>
+          ),
+        },
+        {
+          titulo: 'Qué hay',
+          contenido: (
+            <>
+              <Opciones
+                etiqueta="Tipo de material"
+                opciones={(catalogos?.tiposMaterial ?? []).map(t => t.id)}
+                nombres={nombresDe(catalogos?.tiposMaterial)}
+                valor={tipoMaterial}
+                onChange={setTipoMaterial}
+              />
+              <Campo etiqueta="Kg aproximados" value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder="Un costal lleno ≈ 10–15 kg" />
+              <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline placeholder="Ej: disponible después de las 4 pm" />
+            </>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+export default function Solicitudes() {
+  const { usuario } = useUsuario();
+  const { data, error, recargar } = useData(async () => {
+    const [solicitudes, puntos] = await Promise.all([api.solicitudes(), api.puntosAcopio()]);
+    return { solicitudes, puntos };
+  });
+
+  const [ruta, setRuta] = useState<{ paradas: ParadaRuta[]; totalKm: number; googleMapsUrl: string | null } | null>(null);
+  const [destinoRuta, setDestinoRuta] = useState<string | null>(null);
+  const [calculando, setCalculando] = useState(false);
+  const [cerrando, setCerrando] = useState<string | null>(null);
+  const [pidiendo, setPidiendo] = useState(false);
+  const [verCerradas, setVerCerradas] = useState(false);
+
+  const solicitudes = data?.solicitudes ?? [];
+  const puntos = data?.puntos ?? [];
+  const abiertas = solicitudes.filter(s => s.estado === 'pendiente' || s.estado === 'asignada');
+  const visibles = verCerradas ? solicitudes : abiertas;
+  const solicitudCerrando = solicitudes.find(s => s.id === cerrando);
 
   const cambiar = async (s: Solicitud, estado: EstadoSolicitud) => {
     try {
@@ -134,6 +212,12 @@ export default function Solicitudes() {
     setCalculando(false);
   };
 
+  const terminar = () => {
+    setCerrando(null);
+    setPidiendo(false);
+    recargar();
+  };
+
   const abrirMapa = (s: Solicitud) =>
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`);
 
@@ -147,6 +231,8 @@ export default function Solicitudes() {
         }))}
       />
       <Text style={styles.leyenda}>🔴 Pendiente   🟡 Asignada a un voluntario</Text>
+
+      <Boton texto="➕ Pedir que recojan poda" color={colores.tierra} onPress={() => setPidiendo(true)} />
 
       <Seccion>🧭 Ruta sugerida de recolección</Seccion>
       <Text style={styles.detalle}>Ordena las solicitudes abiertas y las podas de hoy por cercanía desde tu ubicación.</Text>
@@ -190,7 +276,7 @@ export default function Solicitudes() {
             {s.estado === 'pendiente' ? <BotonChico texto="Yo voy" onPress={() => cambiar(s, 'asignada')} /> : null}
             {s.estado === 'asignada' ? (
               <>
-                <BotonChico texto="Ya la recogí" color={colores.tierra} onPress={() => setCerrando(cerrando === s.id ? null : s.id)} />
+                <BotonChico texto="Ya la recogí" color={colores.tierra} onPress={() => setCerrando(s.id)} />
                 <BotonChico texto="Liberar" color={colores.textoSuave} onPress={() => cambiar(s, 'pendiente')} />
               </>
             ) : null}
@@ -198,33 +284,13 @@ export default function Solicitudes() {
               <BotonChico texto="Cancelar" color={colores.rojo} onPress={() => cambiar(s, 'cancelada')} />
             ) : null}
           </View>
-          {cerrando === s.id ? (
-            <CerrarSolicitud solicitud={s} puntos={puntos} onListo={() => { setCerrando(null); recargar(); }} />
-          ) : null}
         </Tarjeta>
       ))}
 
-      <Seccion>Pedir que recojan poda</Seccion>
-      <Aviso tipo="info" texto="¿Podaste un ficus en tu casa, negocio o escuela? Pide que pasen por las hojas y ramas." />
-      <Boton
-        texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : '📍 Tomar mi ubicación'}
-        onPress={async () => setCoords(await obtenerUbicacion('indicar dónde está la poda'))}
-        secundario={!!coords}
-      />
-      <Campo etiqueta="Dirección / referencia" value={direccion} onChangeText={setDireccion} placeholder="Ej: Hidalgo 45, portón verde" />
-      <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
-      <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} />
-      <Campo etiqueta="Teléfono (opcional)" value={contacto} onChangeText={setContacto} keyboardType="phone-pad" />
-      <Opciones
-        etiqueta="Tipo de material"
-        opciones={(catalogos?.tiposMaterial ?? []).map(t => t.id)}
-        nombres={nombresDe(catalogos?.tiposMaterial)}
-        valor={tipoMaterial}
-        onChange={setTipoMaterial}
-      />
-      <Campo etiqueta="Kg aproximados" value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder="Un costal lleno ≈ 10–15 kg" />
-      <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline placeholder="Ej: disponible después de las 4 pm" />
-      <Boton texto="Enviar solicitud" color={colores.tierra} onPress={enviar} cargando={enviando} />
+      {pidiendo ? <NuevaSolicitud onListo={terminar} onCerrar={() => setPidiendo(false)} /> : null}
+      {solicitudCerrando ? (
+        <CerrarSolicitud solicitud={solicitudCerrando} puntos={puntos} onListo={terminar} onCerrar={() => setCerrando(null)} />
+      ) : null}
     </>
   );
 }
@@ -237,5 +303,5 @@ const styles = StyleSheet.create({
   acciones: { flexDirection: 'row', flexWrap: 'wrap' },
   parada: { fontSize: 14, color: colores.texto, marginBottom: 6 },
   total: { fontSize: 13, fontWeight: '700', color: colores.azul, marginTop: 4 },
-  subform: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 },
+  contexto: { fontSize: 14, color: colores.tierra, fontWeight: '600', marginBottom: 12 },
 });

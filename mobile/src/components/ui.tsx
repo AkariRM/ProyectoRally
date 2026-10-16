@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import {
   ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TextInputProps,
   TouchableOpacity, View, ViewStyle,
@@ -62,6 +62,51 @@ export function Dato({ valor, etiqueta, color = colores.verdeClaro }: { valor: s
     <View style={[styles.dato, { backgroundColor: color }]}>
       <Text style={styles.datoValor}>{valor}</Text>
       <Text style={styles.datoEtiqueta}>{etiqueta}</Text>
+    </View>
+  );
+}
+
+// Lista que se abre y se cierra tocando su título. Muestra `visibles` elementos
+// y el resto se ve haciendo scroll dentro de la lista.
+export function ListaDesplegable({ titulo, children, visibles = 3, vacio, extra }: {
+  titulo: string; children: ReactNode; visibles?: number; vacio?: string; extra?: ReactNode;
+}) {
+  const [abierta, setAbierta] = useState(true);
+  const [altos, setAltos] = useState<number[]>([]);
+  const items = React.Children.toArray(children);
+  const medidos = altos.slice(0, visibles);
+  const altoMax = items.length > visibles && medidos.length === visibles && medidos.every(Boolean)
+    ? medidos.reduce((t, h) => t + h, 0)
+    : undefined;
+
+  return (
+    <View style={styles.lista}>
+      <TouchableOpacity style={styles.listaCabecera} onPress={() => setAbierta(!abierta)} accessibilityRole="button">
+        <Text style={styles.listaTitulo}>{titulo} <Text style={styles.listaCuenta}>({items.length})</Text></Text>
+        <Text style={styles.listaFlecha}>{abierta ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+      {abierta ? (
+        <>
+          {extra}
+          {!items.length && vacio ? <Text style={styles.ayuda}>{vacio}</Text> : null}
+          <ScrollView style={altoMax ? { maxHeight: altoMax } : undefined} nestedScrollEnabled persistentScrollbar>
+            {items.map((item, i) => (
+              <View
+                key={(item as { key?: React.Key }).key ?? i}
+                onLayout={e => {
+                  const h = e.nativeEvent.layout.height;
+                  setAltos(a => (a[i] === h ? a : Object.assign([...a], { [i]: h })));
+                }}
+              >
+                {item}
+              </View>
+            ))}
+          </ScrollView>
+          {items.length > visibles ? (
+            <Text style={styles.listaMas}>↕ Desliza dentro de la lista para ver {items.length - visibles} más</Text>
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -247,5 +292,11 @@ const styles = StyleSheet.create({
   barraEtiqueta: { fontSize: 13, color: colores.texto, flex: 1 },
   barraValor: { fontSize: 13, fontWeight: '700', color: colores.texto },
   barraFondo: { height: 10, backgroundColor: '#ECEFF1', borderRadius: 5, overflow: 'hidden' },
+  lista: { marginTop: 16, marginBottom: 8 },
+  listaCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, marginBottom: 4 },
+  listaTitulo: { fontSize: 16, fontWeight: '700', color: colores.texto },
+  listaCuenta: { fontWeight: '400', color: colores.textoSuave },
+  listaFlecha: { fontSize: 13, color: colores.verde },
+  listaMas: { fontSize: 12, color: colores.textoSuave, textAlign: 'center', marginTop: 4 },
   barraRelleno: { height: 10, backgroundColor: colores.verde, borderRadius: 5 },
 });
