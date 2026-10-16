@@ -5,6 +5,12 @@ const morgan = require('morgan');
 const db = require('./lib/db');
 const { autenticar, asegurarAdmin, requiereAdmin } = require('./lib/auth');
 
+// En producción las sesiones necesitan AUTH_SECRET; sin ella cada inicio de sesión daría error 500
+if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET) {
+  console.error('❌ Falta la variable de entorno AUTH_SECRET. Agrégala en Render (Environment) y vuelve a desplegar.');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
