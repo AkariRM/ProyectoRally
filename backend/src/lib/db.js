@@ -1,6 +1,6 @@
 // Almacenamiento de datos con dos modos:
 //
-//  - PostgreSQL (Supabase), si existe DATABASE_URL: tabla bio_red.documentos con
+//  - PostgreSQL (Supabase), si existe DATABASE_URL: tabla public.documentos con
 //    (coleccion, id, datos jsonb). Al arrancar se carga todo en memoria y cada cambio
 //    se guarda de inmediato en la base (en orden, uno tras otro).
 //  - Archivo JSON (data/db.json), si no hay DATABASE_URL: para desarrollo y pruebas.
@@ -16,7 +16,7 @@ const seed = require('../data/seed');
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'data', 'db.json');
 // Las pruebas nunca tocan la base real (borran y recrean datos)
 const DATABASE_URL = process.env.NODE_ENV === 'test' ? null : process.env.DATABASE_URL;
-const TABLA = 'bio_red.documentos';
+const TABLA = 'public.documentos';
 const META = '_meta'; // registro con las colecciones ya inicializadas
 
 let db = null;
@@ -87,8 +87,14 @@ async function iniciarPostgres() {
     max: 5,
   });
 
-  // Esquema propio (no expuesto por la API pública de Supabase) y RLS activado por seguridad
-  await pool.query(`create schema if not exists bio_red`);
+  // Versiones anteriores usaban el esquema bio_red: se mueve la tabla a public sin perder datos
+  await pool.query(`
+    do $$ begin
+      if to_regclass('public.documentos') is null and to_regclass('bio_red.documentos') is not null then
+        alter table bio_red.documentos set schema public;
+      end if;
+    end $$`);
+  await pool.query(`drop schema if exists bio_red`).catch(() => {}); // solo si quedó vacío
   await pool.query(`
     create table if not exists ${TABLA} (
       coleccion text not null,
@@ -97,7 +103,10 @@ async function iniciarPostgres() {
       actualizado timestamptz not null default now(),
       primary key (coleccion, id)
     )`);
+  // La tabla está en public: RLS sin políticas y sin permisos para los roles de la API pública
+  // de Supabase (anon / authenticated). Solo el backend, con la conexión directa, la usa.
   await pool.query(`alter table ${TABLA} enable row level security`);
+  await pool.query(`revoke all on ${TABLA} from anon, authenticated`).catch(() => {});
 
   const { rows } = await pool.query(`select coleccion, datos from ${TABLA} order by datos->>'creadoEn' nulls first`);
   db = {};

@@ -42,7 +42,7 @@ npm test           # pruebas de la API
 
 Los datos se guardan en:
 
-- **PostgreSQL (Supabase)** si existe `DATABASE_URL` (producción en Render). Tabla `bio_red.documentos` (esquema propio, RLS activado): al arrancar se carga todo en memoria y cada cambio se guarda de inmediato. Las colecciones y datos iniciales se crean solos la primera vez.
+- **PostgreSQL (Supabase)** si existe `DATABASE_URL` (producción en Render). Tabla `public.documentos` (RLS activado y sin permisos para la API pública de Supabase): al arrancar se carga todo en memoria y cada cambio se guarda de inmediato. Las colecciones y datos iniciales se crean solos la primera vez.
 - **`backend/data/db.json`** si no hay `DATABASE_URL` (desarrollo y pruebas; se crea solo, no se sube a git).
 
 Usa una sola instancia del servidor por base de datos: no conectes tu PC y Render a la misma base al mismo tiempo.
