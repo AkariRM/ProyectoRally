@@ -52,6 +52,7 @@ router.use(
       lat: { type: 'number', required: true, min: -90, max: 90 },
       lng: { type: 'number', required: true, min: -180, max: 180 },
       radioM: { type: 'number', min: 10, max: 5000 },
+      ubicacionConfirmada: { type: 'enum', values: [true, false] }, // false = coordenada provisional
       responsable: { type: 'string' }, // quién poda (ej. Servicios Públicos Municipales)
       puntoDestinoId: { type: 'string', ref: 'puntosAcopio' },
       diasSemana: { type: 'object' },

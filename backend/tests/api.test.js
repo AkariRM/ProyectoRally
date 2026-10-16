@@ -362,7 +362,8 @@ describe('API Píldoras Bióticas', () => {
     expect(csv.status).toBe(404); // especies no es exportable…
     const csvZonas = await request(app).get(`/api/exportar/zonas-poda.csv?token=${admin.token}`).expect(200);
     expect(csvZonas.headers['content-type']).toMatch(/text\/csv/);
-    expect(csvZonas.text).toMatch(/^﻿id,nombre/);
+    expect(csvZonas.text.startsWith('﻿id,')).toBe(true); // BOM para Excel
+    expect(csvZonas.text.split(/\r?\n/)[0].split(',')).toContain('nombre');
 
     await comoAdmin(request(app).get('/api/exportar/lotes.geojson')).expect(400);
     // El token por query solo vale para exportar

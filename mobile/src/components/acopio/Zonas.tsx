@@ -19,6 +19,11 @@ const TIPOS = ['calle', 'plaza', 'parque', 'escuela', 'otro'] as const;
 const DIAS = [1, 2, 3, 4, 5, 6, 0];
 const NOMBRES_DIA = Object.fromEntries(DIAS_SEMANA.map((n, i) => [i, n])) as Record<number, string>;
 
+// Ubicación provisional: campo explícito o, en datos anteriores, deducido de la nota
+export const porConfirmar = (z: ZonaPoda) =>
+  z.ubicacionConfirmada === false ||
+  (z.ubicacionConfirmada === undefined && /ubicaci[oó]n/i.test(z.notas ?? '') && /(por confirmar|aproximada)/i.test(z.notas ?? ''));
+
 const horario = (z: { diasSemana?: number[]; horaInicio?: string; horaFin?: string }) =>
   `${(z.diasSemana ?? []).map(d => DIAS_SEMANA[d]).join(', ') || 'sin días'}` +
   `${z.horaInicio ? ` · ${z.horaInicio}${z.horaFin ? `–${z.horaFin}` : ''}` : ''}`;
@@ -86,6 +91,7 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
   const [responsable, setResponsable] = useState(zona?.responsable ?? '');
   const [destino, setDestino] = useState<string | null>(zona?.puntoDestinoId ?? null);
   const [notas, setNotas] = useState(zona?.notas ?? '');
+  const [confirmada, setConfirmada] = useState<'sí' | 'no'>(zona && porConfirmar(zona) ? 'no' : 'sí');
   const [enviando, setEnviando] = useState(false);
 
   const guardar = async () => {
@@ -94,6 +100,7 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
     const datos: Partial<ZonaPoda> = {
       nombre, municipio: municipio ?? undefined, tipo: tipo ?? undefined, lat: coords.lat, lng: coords.lng,
       radioM: Number(radio), diasSemana: dias, horaInicio, horaFin, responsable,
+      ubicacionConfirmada: confirmada === 'sí',
       puntoDestinoId: destino ?? undefined, notas,
     };
     try {
@@ -118,10 +125,14 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
         texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} · tocar para usar mi ubicación` : '📍 Tomar ubicación (centro de la zona)'}
         onPress={async () => {
           const c = await obtenerUbicacion('marcar la zona de poda');
-          if (c) setCoords(c);
+          if (c) {
+            setCoords(c);
+            setConfirmada('sí'); // tomada en el lugar → ubicación real
+          }
         }}
         secundario={!!coords}
       />
+      <Opciones etiqueta="¿Ubicación confirmada?" opciones={['sí', 'no'] as const} valor={confirmada} onChange={setConfirmada} />
       <Campo etiqueta="Radio (metros)" value={radio} onChangeText={setRadio} keyboardType="number-pad" />
       <OpcionesMultiples etiqueta="Días de poda" opciones={DIAS} valores={dias} onChange={setDias} nombres={NOMBRES_DIA} />
       <View style={styles.fila}>
@@ -261,18 +272,30 @@ export default function Zonas() {
     <>
       {error ? <Aviso texto={error} /> : null}
       <Mapa
-        zonas={zonas.map(z => ({ id: z.id, lat: z.lat, lng: z.lng, radioM: z.radioM, activa: suscritas.includes(z.id) }))}
+        alto={260}
+        zonas={zonas.map(z => ({
+          id: z.id, lat: z.lat, lng: z.lng, radioM: z.radioM, titulo: z.nombre,
+          activa: suscritas.includes(z.id), porConfirmar: porConfirmar(z),
+        }))}
         puntos={puntos
           .filter(p => p.lat !== undefined && p.lng !== undefined)
           .map(p => ({ id: p.id, lat: p.lat!, lng: p.lng!, titulo: p.nombre, descripcion: 'Punto de acopio', color: 'orange' }))}
       />
-      <Text style={styles.leyenda}>🟤 Zona de poda   🟢 Zona con aviso   🟠 Punto de acopio</Text>
+      <Text style={styles.leyenda}>🟤 Zona de poda   🟢 Zona con aviso   🟠 Punto de acopio   ⚪ ? Zona por ubicar</Text>
       <Aviso
         tipo="info"
         texto={suscritas.length
           ? `🔔 Sigues ${suscritas.length} zona(s) · ${avisosProgramados ?? 0} avisos programados (un día antes a las 19:00 y 1 hora antes).`
           : 'Toca "🔔 Avisarme" en una zona para recibir aviso antes de cada poda.'}
       />
+
+      {zonas.some(porConfirmar) ? (
+        <Aviso
+          tipo="error"
+          texto={`📍 ${zonas.filter(porConfirmar).length} zona(s) sin ubicación confirmada (pin gris "?" en el mapa): ${zonas
+            .filter(porConfirmar).map(z => z.nombre).join(', ')}. Ve al lugar, toca "✏️ Editar" y luego "📍 Usar mi ubicación".`}
+        />
+      ) : null}
 
       <Seccion>Próximas jornadas de poda</Seccion>
       {!jornadas.length ? <Text style={styles.detalle}>No hay jornadas programadas. Genera las de una zona abajo.</Text> : null}

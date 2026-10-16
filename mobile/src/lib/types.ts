@@ -197,6 +197,7 @@ export interface ZonaPoda {
   lat: number;
   lng: number;
   radioM: number;
+  ubicacionConfirmada?: boolean; // false = coordenada provisional
   responsable?: string;
   puntoDestinoId?: string;
   diasSemana: number[];

@@ -155,6 +155,7 @@ module.exports = {
   zonasPoda: [
     {
       id: 'zona-bosque-cuauhtemoc',
+      ubicacionConfirmada: false,
       nombre: 'Bosque Cuauhtémoc',
       municipio: 'Jiquilpan',
       tipo: 'parque',
@@ -173,6 +174,7 @@ module.exports = {
     // centro de Jiquilpan hasta que un admin las corrija (editar zona → usar mi ubicación).
     {
       id: 'zona-andador-jardin-paz',
+      ubicacionConfirmada: false,
       nombre: 'Andador del Jardín de la Paz',
       municipio: 'Jiquilpan',
       tipo: 'calle',
@@ -186,6 +188,7 @@ module.exports = {
     },
     {
       id: 'zona-jardin-paz',
+      ubicacionConfirmada: false,
       nombre: 'Jardín de la Paz',
       municipio: 'Jiquilpan',
       tipo: 'plaza',
@@ -199,6 +202,7 @@ module.exports = {
     },
     {
       id: 'zona-plaza-aguadora',
+      ubicacionConfirmada: true,
       nombre: 'Plaza de la Aguadora',
       municipio: 'Jiquilpan',
       tipo: 'plaza',
@@ -212,6 +216,7 @@ module.exports = {
     },
     {
       id: 'zona-unidad-deportiva',
+      ubicacionConfirmada: true,
       nombre: 'Unidad Deportiva Lázaro Cárdenas',
       municipio: 'Jiquilpan',
       tipo: 'parque',
@@ -225,6 +230,7 @@ module.exports = {
     },
     {
       id: 'zona-parque-lineal',
+      ubicacionConfirmada: false,
       nombre: 'Parque Lineal',
       municipio: 'Jiquilpan',
       tipo: 'parque',
@@ -238,6 +244,7 @@ module.exports = {
     },
     {
       id: 'zona-escuelas-jiquilpan',
+      ubicacionConfirmada: false,
       nombre: 'Escuelas de Jiquilpan',
       municipio: 'Jiquilpan',
       tipo: 'escuela',
@@ -251,6 +258,7 @@ module.exports = {
     },
     {
       id: 'zona-centro-sahuayo',
+      ubicacionConfirmada: false,
       nombre: 'Centro de Sahuayo',
       municipio: 'Sahuayo',
       tipo: 'plaza',
