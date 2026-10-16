@@ -1,0 +1,12 @@
+# Netlify: la app web es una sola página; todas las rutas (/login, /acopio…) cargan index.html
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

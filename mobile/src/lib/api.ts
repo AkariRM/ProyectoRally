@@ -12,16 +12,23 @@ import type {
 // - Web local: mismo host que la página, puerto 3000.
 // - Celular con Expo Go: la IP de la computadora que corre `expo start`, puerto 3000
 //   (misma red Wi-Fi).
+// "https://x.onrender.com/" o "https://x.onrender.com" → "https://x.onrender.com/api"
+function normalizar(url: string): string {
+  const limpia = url.trim().replace(/\/+$/, '');
+  return limpia.endsWith('/api') ? limpia : `${limpia}/api`;
+}
+
 function resolverBaseUrl(): string {
+  const env = process.env.EXPO_PUBLIC_API_URL ? normalizar(process.env.EXPO_PUBLIC_API_URL) : null;
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
     if (hostname.includes('-8081.')) return `${protocol}//${hostname.replace('-8081.', '-3000.')}/api`;
     // En la misma computadora o red local se ignora EXPO_PUBLIC_API_URL
     const local = hostname === 'localhost' || hostname === '127.0.0.1' || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(hostname);
-    if (!local && process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+    if (!local && env) return env;
     return `${protocol}//${hostname}:3000/api`;
   }
-  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  if (env) return env;
   const host = Constants.expoConfig?.hostUri?.split(':')[0];
   return `http://${host || 'localhost'}:3000/api`;
 }
