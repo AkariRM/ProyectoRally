@@ -130,14 +130,16 @@ Para otra URL, crea `mobile/.env` con `EXPO_PUBLIC_API_URL=http://<ip>:3000/api`
 
 ## Fórmula y balance de masa
 
-Según el documento de la problemática:
-- **Fórmula base para 150 g:** 52.5 g de biochar de ramas de ficus, 45 g de harina de pasto y hojas, 22.5 g de compost de hojas y 30 g de pasta aglutinante húmeda.
-- **Al crear un lote** se elige la fórmula y la masa a preparar. La app reescala los gramos, calcula el número de esferas (de 2–3 cm, unos 10 g cada una) y el **balance de masa**:
+La app usa solo los valores del documento de la problemática:
+- **Receta de 150 g:** 52.5 g de biochar de ramas de ficus, 45 g de harina de pasto y hojas, 22.5 g de compost de hojas y 30 g de pasta aglutinante húmeda.
+- **Composición:** biochar 55 %, harina 30 %, compost 15 %.
+- **Esferas:** de 2–3 cm, secadas a la sombra. Al crear un lote se cuentan las esferas que salieron o se pesa una.
+- **Balance de masa:**
 
   m_j = Σ m_ingrediente × x_j,ingrediente  →  w_j = m_j / M_total × 100
 
-- Las fracciones de cada ingrediente (celulosa, hemicelulosa, lignina, polifenoles…) se editan en **Catálogos → Ingredientes**.
-- Las inconsistencias numéricas que se encontraron en el documento están en [docs/revision-documento-problema.md](docs/revision-documento-problema.md).
+  Con la receta de 150 g da celulosa 12 %, lignina 18 %, polisacáridos y pectinas 11.25 % y polifenoles 3.5 %, igual que el documento.
+- Las inconsistencias numéricas del documento están en [docs/revision-documento-problema.md](docs/revision-documento-problema.md).
 
 ## Avisos de poda
 

@@ -47,6 +47,12 @@ describe('API Bio Red', () => {
     expect(puntos.body.data.map(p => p.id)).toContain('bosque-cuauhtemoc');
   });
 
+  test('el lote pide cuántas esferas salieron o el peso de una esfera', async () => {
+    const res = await comoVol(request(app)).post('/api/lotes').send({ especieId: 'mezquite', ingredientes: ARCILLA_FICUS });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/cantidad|peso/);
+  });
+
   test('el lote requiere ingredientes válidos en gramos', async () => {
     const sin = await comoVol(request(app)).post('/api/lotes').send({ especieId: 'mezquite' });
     expect(sin.status).toBe(400);
@@ -58,22 +64,27 @@ describe('API Bio Red', () => {
 
   test('fórmula base del documento: 150 g, balance de masa y consumo de biomasa', async () => {
     const formulas = (await comoVol(request(app)).get('/api/formulas')).body.data;
+    expect(formulas.map(f => f.id).sort()).toEqual(['composicion-documento', 'formula-base-150g']);
+    expect(formulas.find(f => f.id === 'composicion-documento').ingredientes.map(i => i.porcentaje)).toEqual([55, 30, 15]);
     const base = formulas.find(f => f.id === 'formula-base-150g');
     // 35/30/15/20 % de 150 g = 52.5 g biochar, 45 g harina, 22.5 g compost, 30 g pasta
     const ingredientes = base.ingredientes.map(i => ({ ingredienteId: i.ingredienteId, gramos: (base.masaTotalG * i.porcentaje) / 100 }));
     expect(ingredientes.map(i => i.gramos)).toEqual([52.5, 45, 22.5, 30]);
 
     const lote = await comoVol(request(app)).post('/api/lotes')
-      .send({ especieId: 'mezquite', formulaId: base.id, ingredientes }).expect(201);
+      .send({ especieId: 'mezquite', formulaId: base.id, ingredientes, cantidad: 6 }).expect(201);
     const d = lote.body.data;
-    expect(d).toMatchObject({ pesoPildoraG: 10, diametroMm: 25, cantidad: 15 }); // 150 g / 10 g
+    expect(d).toMatchObject({ diametroMm: 25, cantidad: 6 });
     expect(d.composicion.masaTotalG).toBe(150);
-    // Σ masa × fracción (fracciones del catálogo): celulosa 0 + 15.75 + 2.25 = 18 g → 12 %
+    // Resultados del documento ("Integración Cuantitativa"):
+    // celulosa 0 + 15.75 + 2.25 = 18 g → 12 %
     expect(d.composicion.componentes.celulosa).toEqual({ gramos: 18, porcentaje: 12 });
-    // hemicelulosa/pectinas 0 + 13.5 + 3.375 = 16.875 g → 11.25 %
+    // lignina 12.375 + 6.75 + 7.875 = 27 g → 18 %
+    expect(d.composicion.componentes.lignina).toEqual({ gramos: 27, porcentaje: 18 });
+    // polisacáridos complejos y pectinas 0 + 13.5 + 3.375 = 16.875 g → 11.25 %
     expect(d.composicion.componentes.hemicelulosa).toEqual({ gramos: 16.88, porcentaje: 11.25 });
-    // lignina 7.875 + 6.75 + 7.875 = 22.5 g → 15 %
-    expect(d.composicion.componentes.lignina.porcentaje).toBe(15);
+    // polifenoles 1.65 + 1.35 + 2.25 = 5.25 g → 3.5 %
+    expect(d.composicion.componentes.polifenoles).toEqual({ gramos: 5.25, porcentaje: 3.5 });
     expect(d.consumo).toEqual({ biochar: 0.053, harina: 0.045 });
     expect(d.advertencia).toMatch(/biochar/); // no había biochar registrado
   });
@@ -89,6 +100,7 @@ describe('API Bio Red', () => {
     await comoVol(request(app)).post('/api/lotes').send({
       especieId: 'mezquite',
       ingredientes: [{ ingredienteId: 'biochar-ramas-ficus', gramos: 525 }, { ingredienteId: 'harina-pasto-hojas', gramos: 450 }],
+      cantidad: 80,
     }).expect(201);
 
     const { body } = await comoVol(request(app)).get('/api/procesos-biomasa/inventario');
@@ -104,7 +116,7 @@ describe('API Bio Red', () => {
 
     const lote = await comoVol(request(app))
       .post('/api/lotes')
-      .send({ especieId: 'mezquite', ingredientes: ARCILLA_FICUS })
+      .send({ especieId: 'mezquite', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10 })
       .expect(201);
     expect(lote.body.data.codigo).toBe('L-001');
     expect(lote.body.data.cantidad).toBe(100); // 1000 g / 10 g por esfera
@@ -156,7 +168,7 @@ describe('API Bio Red', () => {
       .send({ especieId: 'huizache', ingredientes: [
         { ingredienteId: 'arcilla-local', gramos: 400 }, { ingredienteId: 'compost-hojas', gramos: 200 },
         { ingredienteId: 'escamas-ficus', gramos: 400 },
-      ] })
+      ], cantidad: 100 })
       .expect(201);
     expect(lote.body.data.consumo).toEqual({ triturada: 0.4 });
     expect(lote.body.data.advertencia).toBeUndefined();
@@ -386,12 +398,12 @@ describe('API Bio Red', () => {
     expect(inv.body.data.recibidaPorTipo).toEqual({ hojas: 4, 'ramas finas': 6 });
 
     const lote = await comoVol(request(app)).post('/api/lotes').send({
-      especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS,
+      especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10,
       aditivos: ['micorrizas'], aditivosDetalle: '5 g de inóculo por kg de mezcla',
     }).expect(201);
     expect(lote.body.data.aditivos).toEqual(['micorrizas']);
     const malAditivo = await comoVol(request(app)).post('/api/lotes')
-      .send({ especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS, aditivos: ['magia'] });
+      .send({ especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10, aditivos: ['magia'] });
     expect(malAditivo.status).toBe(400);
 
     await comoVol(request(app)).post('/api/ensayos')
@@ -448,7 +460,7 @@ describe('API Bio Red', () => {
     // Aditivo nuevo usable en lotes; tipo de material nuevo usable en entregas
     const ad = await comoAdmin(request(app).post('/api/aditivos').send({ nombre: 'Trichoderma' })).expect(201);
     await comoVol(request(app).post('/api/lotes')).send({
-      especieId: 'mezquite', ingredientes: ARCILLA_FICUS, aditivos: [ad.body.data.id],
+      especieId: 'mezquite', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10, aditivos: [ad.body.data.id],
     }).expect(201);
     const tm = await comoAdmin(request(app).post('/api/tipos-material').send({ nombre: 'Corteza' })).expect(201);
     await comoVol(request(app).post('/api/entregas-poda')).send({ puntoId: 'plaza-jiquilpan', kg: 2, tipoMaterial: tm.body.data.id }).expect(201);

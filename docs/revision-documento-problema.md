@@ -1,49 +1,34 @@
 # Revisión del documento "Problema" — puntos para Bioquímica
 
-La app ya sigue el documento: la fórmula de 150 g, los procesos (secado, escamas de 2–3 mm, pirólisis y molienda), las esferas de 2–3 cm, el inóculo, las especies y el balance de masa. Al pasar los números a la app aparecieron estas inconsistencias. Conviene corregirlas en el documento.
+La app usa **solo los valores del documento** para hacer las píldoras:
 
-## 1. Porcentajes de la fórmula vs. gramos
+- **Fórmulas:**
+  - "Receta de 150 g del documento": 52.5 g de biochar de ramas de ficus, 45 g de harina de pasto y hojas, 22.5 g de compost de hojas y 30 g de pasta aglutinante húmeda.
+  - "Composición del documento": biochar 55 %, harina 30 %, compost 15 %.
+- **Ingredientes:** los de las fórmulas, más escamas de ficus, arcilla local y compost maduro o humus.
+- **Inóculo:** micorrizas de suelo forestal o bacterias benéficas.
+- **Proceso:**
+  - Hojas secas y ramillas tiernas secadas al sol y trituradas a escamas de 2–3 mm.
+  - Ramas convertidas en biochar por pirólisis a más de 450 °C sin oxígeno.
+  - Pasto y hojas molidos a harina.
+  - Esferas de 2–3 cm, secadas a la sombra.
+- **Balance de masa:** se usan las cantidades de la "Integración Cuantitativa". Con la receta de 150 g la app da los mismos resultados que el documento:
 
-- El documento dice **biochar 55 %, harina 30 %, compost 15 %** (suma 100 %).
-- Pero los gramos para 150 g son **52.5 + 45 + 22.5 = 120 g**, más **30 g de pasta aglutinante** = 150 g.
-- Con esos gramos los porcentajes reales son: **biochar 35 %, harina 30 %, compost 15 %, pasta 20 %**.
-- Con 55 % el biochar serían 82.5 g, no 52.5 g.
-
-**En la app:** la fórmula base usa los **gramos** (35 / 30 / 15 / 20 %), que es lo que se pesa en la práctica. Si el 55 % era el correcto, edita la fórmula en **Inicio → Catálogos → Fórmulas**.
-
-## 2. Desglose de la harina de pasto
-
-Las operaciones de la harina usan **52.5 g** (la masa del biochar) en lugar de **45 g**. Además pone "celulosa 52.5 g × 0.00 = 0 g", aunque en los totales usa **15.75 g** de celulosa para la harina (= 45 g × 0.35).
-
-**En la app:** fracciones de la harina = celulosa 0.35, hemicelulosa/pectinas 0.30, lignina 0.15, polifenoles 0.03. Se dedujeron de los totales del documento.
-
-## 3. Lignina del compost
-
-El texto dice **X = 0.35**, pero la operación usa **× 0.15** (22.5 g × 0.15 = 3.375 g), y en los totales aparece **7.875 g**.
-
-**En la app:** 0.35 (el valor declarado).
-
-## 4. Lignina del biochar
-
-En el desglose: 52.5 g × 0.15 = **7.875 g**. En los totales se suma **12.375 g**.
-
-## 5. Resultado final
-
-Con las fracciones registradas, la app calcula para la fórmula de 150 g:
-
-| Componente | Documento | App (balance de masa) |
+| Componente | Documento | App |
 |---|---|---|
-| Celulosa | 12 % | **12 %** (18 g) |
-| Hemicelulosa / pectinas | 11.25 % | **11.25 %** (16.88 g) |
-| Lignina | 18 % | **15 %** (22.5 g) |
-| Polifenoles / taninos | 3.5 % | **3.45 %** (5.18 g) |
+| Celulosa | 12 % | 12 % (18 g) |
+| Lignina y estructuras equivalentes | 18 % | 18 % (27 g) |
+| Polisacáridos complejos y pectinas | 11.25 % | 11.25 % (16.88 g) |
+| Polifenoles, taninos y flavonoides | 3.5 % | 3.5 % (5.25 g) |
 
-La diferencia en lignina viene de los puntos 3 y 4.
+## Inconsistencias que conviene corregir en el documento
 
-## 6. Pasta aglutinante
+1. **Composición vs. receta.** Biochar 55 % / harina 30 % / compost 15 % no coincide con los gramos de la receta de 150 g: 52.5 g de biochar es 35 % de 150 g, y con 55 % serían 82.5 g. Por eso la app tiene las dos fórmulas por separado.
+2. **Harina de pasto.** El desglose multiplica 52.5 g (la masa del biochar) en lugar de 45 g, y pone celulosa × 0.00. Los totales usan 15.75 g de celulosa (45 g × 0.35). La app usa los totales.
+3. **Lignina del compost.** El texto dice X = 0.35, la operación usa × 0.15 (3.375 g) y los totales usan 7.875 g (= 22.5 g × 0.35). La app usa 0.35.
+4. **Lignina del biochar.** El desglose da 7.875 g (× 0.15) y los totales usan 12.375 g. La app usa 12.375 g (fracción 0.2357), que es lo que lleva al 18 % final.
+5. **Pasta aglutinante.** No tiene composición en el documento, así que no aporta al balance de masa.
+6. **Arcilla.** El concepto menciona arcilla local, pero la receta de 150 g no la incluye.
+7. **Peso de cada esfera.** El documento solo da el diámetro (2–3 cm). En la app se cuenta cuántas esferas salieron o se pesa una.
 
-No tiene composición en el documento, así que no aporta al balance. Cuando se defina (por ejemplo, arcilla + agua, almidón o mucílago de nopal), regístrala en **Catálogos → Ingredientes → Pasta aglutinante húmeda**.
-
-## 7. Arcilla
-
-El concepto menciona **arcilla local** como base de la esfera, pero la fórmula de 150 g no la incluye. Hay que aclarar si la pasta aglutinante es la arcilla, o si la arcilla va aparte. La app tiene las dos fórmulas: la del documento y la "bola de arcilla con escamas de ficus".
+Si Bioquímica corrige un valor, se cambia en **Inicio → Catálogos → Ingredientes / Fórmulas**, sin tocar código.

@@ -3,13 +3,12 @@ const { inventario } = require('../lib/biomasa');
 const { balanceDeMasa, consumoDeBiomasa } = require('../lib/balance');
 const db = require('../lib/db');
 
-// Esferas del tamaño de una canica grande: 2–3 cm de diámetro (≈ 10 g secas)
-const PESO_PILDORA_G = 10;
+// Esferas compactas del tamaño de una canica grande: 2 a 3 cm de diámetro (documento)
 const DIAMETRO_MM = 25;
 
 // Lotes de producción de píldoras. La mezcla se registra como ingredientes en gramos
 // (normalmente a partir de una fórmula). Al crear el lote se calculan:
-//  - cantidad de esferas (masa total / peso por esfera), si no se indica
+//  - cantidad de esferas: la que se indique o masa total / peso de una esfera
 //  - composicion: balance de masa por componente (celulosa, lignina, …)
 //  - consumo: kg tomados de cada inventario de biomasa (escamas, biochar, harina)
 module.exports = crudRouter(
@@ -42,16 +41,18 @@ module.exports = crudRouter(
           }
         }
       }
+      if (data.cantidad === undefined && data.pesoPildoraG === undefined) {
+        errores.push('indica cuántas esferas salieron (cantidad) o el peso de una esfera (pesoPildoraG)');
+      }
       if (data.aditivos !== undefined && !(Array.isArray(data.aditivos) && data.aditivos.every(a => db.get('aditivos', a)))) {
         errores.push(`aditivos debe ser una lista de ids del catálogo de aditivos: ${db.list('aditivos').map(a => a.id).join(', ')}`);
       }
       return errores;
     },
     beforeCreate: data => {
-      const pesoPildoraG = data.pesoPildoraG || PESO_PILDORA_G;
       const composicion = balanceDeMasa(data.ingredientes);
       const consumo = consumoDeBiomasa(data.ingredientes);
-      const cantidad = data.cantidad || Math.max(1, Math.floor(composicion.masaTotalG / pesoPildoraG));
+      const cantidad = data.cantidad || Math.max(1, Math.floor(composicion.masaTotalG / data.pesoPildoraG));
       const diametroMm = data.diametroMm || DIAMETRO_MM;
 
       // No se bloquea (pueden ser lotes de prueba), pero quedan registradas
@@ -60,12 +61,11 @@ module.exports = crudRouter(
       for (const [recurso, kg] of Object.entries(consumo)) {
         if (kg > (inv[recurso] || 0)) advertencias.push(`Se usaron ${kg} kg de ${recurso} pero solo había ${inv[recurso] || 0} kg registrados`);
       }
-      if (diametroMm < 20 || diametroMm > 30) advertencias.push(`El diámetro recomendado es de 20 a 30 mm (se registró ${diametroMm} mm)`);
+      if (diametroMm < 20 || diametroMm > 30) advertencias.push(`El documento indica esferas de 2 a 3 cm (se registró ${diametroMm} mm)`);
 
       return {
         semillasPorPildora: 1,
         ...data,
-        pesoPildoraG,
         diametroMm,
         cantidad,
         composicion,

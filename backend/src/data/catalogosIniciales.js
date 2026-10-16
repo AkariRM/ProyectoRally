@@ -41,76 +41,75 @@ module.exports = {
     },
   ],
 
-  // Aditivos biológicos para el recubrimiento
+  // Inóculo local (documento): micorrizas de suelo forestal o bacterias benéficas
   aditivos: [
-    { id: 'micorrizas', nombre: 'Micorrizas' },
-    { id: 'bacterias fijadoras de N', nombre: 'Bacterias fijadoras de N' },
-    { id: 'lombricomposta', nombre: 'Lombricomposta' },
-    { id: 'composta extra', nombre: 'Composta extra' },
-    { id: 'otro', nombre: 'Otro' },
+    { id: 'micorrizas', nombre: 'Micorrizas de suelo forestal' },
+    { id: 'bacterias-beneficas', nombre: 'Bacterias benéficas' },
   ],
 
-  // Tipo de material de poda recolectado
+  // Material de poda recolectado (documento: hojas secas, ramillas tiernas, ramas, pasto)
   tiposMaterial: [
-    { id: 'hojas', nombre: 'Hojas' },
-    { id: 'ramas finas', nombre: 'Ramas finas' },
-    { id: 'ramas gruesas', nombre: 'Ramas gruesas' },
+    { id: 'hojas', nombre: 'Hojas secas' },
+    { id: 'ramas finas', nombre: 'Ramillas tiernas' },
+    { id: 'ramas gruesas', nombre: 'Ramas' },
     { id: 'pasto', nombre: 'Pasto' },
-    { id: 'mixto', nombre: 'Mixto' },
   ],
 
   // Ingredientes de la mezcla. "recurso" indica de qué inventario de biomasa se descuenta
   // (triturada = escamas de ficus, biochar, harina) y "fracciones" su composición en base
-  // seca (0–1) para el balance de masa. Valores tomados del documento de la problemática.
+  // seca (0–1) para el balance de masa. Las de biochar, harina y compost son las que usa el
+  // documento en su "Integración Cuantitativa" (masa de cada componente / masa del insumo),
+  // así la receta de 150 g da sus resultados: celulosa 12 %, lignina 18 %,
+  // hemicelulosa/pectinas 11.25 %, polifenoles 3.5 %.
   ingredientes: [
     {
       id: 'biochar-ramas-ficus', nombre: 'Biochar de ramas de ficus', recurso: 'biochar',
-      fracciones: { celulosa: 0, hemicelulosa: 0, lignina: 0.15, polifenoles: 0.03, poliisoprenoides: 0 },
-      notas: 'Pirólisis > 450 °C sin oxígeno: celulosa, hemicelulosa y terpenos se volatilizan; queda carbono fijo (fracción lignínica ≈ 0.15).',
+      fracciones: { celulosa: 0, hemicelulosa: 0, lignina: 0.235714, polifenoles: 0.031429, poliisoprenoides: 0 },
+      notas: 'Pirólisis > 450 °C sin oxígeno: celulosa, hemicelulosa y poliisoprenoides se volatilizan; queda carbono fijo. Documento: 12.375 g de lignina y estructuras equivalentes y 1.65 g de polifenoles por 52.5 g.',
     },
     {
       id: 'harina-pasto-hojas', nombre: 'Harina de pasto y hojas', recurso: 'harina',
       fracciones: { celulosa: 0.35, hemicelulosa: 0.30, lignina: 0.15, polifenoles: 0.03 },
-      notas: 'Biomasa lignocelulósica foliar molida. Fracciones deducidas de los totales del documento (15.75 g celulosa, 13.5 g hemicelulosa/pectinas, 6.75 g lignina, 1.35 g polifenoles por 45 g).',
+      notas: 'Biomasa lignocelulósica foliar típica. Documento: 15.75 g de celulosa, 13.5 g de hemicelulosa y pectinas, 6.75 g de lignina y 1.35 g de polifenoles por 45 g.',
     },
     {
       id: 'compost-hojas', nombre: 'Compost de hojas', recurso: null,
       fracciones: { celulosa: 0.10, hemicelulosa: 0.15, lignina: 0.35, polifenoles: 0.10 },
-      notas: 'Materia orgánica humificada (celulosa lábil 0.10, lignina y ácidos húmicos 0.35, polisacáridos refractarios 0.15, taninos 0.10).',
+      notas: 'Materia orgánica humificada por biodegradación aerobia. Documento: celulosa lábil 0.10, lignina y ácidos fúlvicos/húmicos 0.35, polisacáridos refractarios 0.15, polifenoles y taninos 0.10 (22.5 g → 2.25 g, 7.875 g, 3.375 g, 2.25 g).',
     },
     {
       id: 'escamas-ficus', nombre: 'Escamas de ficus (hoja triturada 2–3 mm)', recurso: 'triturada',
       fracciones: { celulosa: 0.385, hemicelulosa: 0.305, lignina: 0.234, extractivos: 0.029, cenizas: 0.045 },
-      notas: 'Hojas secas y ramillas tiernas secadas al sol y trituradas a 2–3 mm. Composición de hoja/fibra cruda en base seca.',
+      notas: 'Hojas secas y ramillas tiernas secadas al sol y trituradas hasta escamas finas de 2 a 3 mm. Composición de hoja/fibra cruda (% base seca) del documento.',
     },
     {
       id: 'pasta-aglutinante', nombre: 'Pasta aglutinante húmeda', recurso: null, fracciones: {},
-      notas: 'Composición por definir (Bioquímica). No aporta al balance de masa hasta que se registren sus fracciones.',
+      notas: '30 g en la receta de 150 g.',
     },
-    { id: 'arcilla-local', nombre: 'Arcilla local (Jiquilpan)', recurso: null, fracciones: {}, notas: 'Aporte mineral; sin fracciones lignocelulósicas.' },
-    { id: 'humus', nombre: 'Humus / composta madura', recurso: null, fracciones: { lignina: 0.30, hemicelulosa: 0.10, celulosa: 0.08 }, notas: 'Valores aproximados, por validar.' },
+    { id: 'arcilla-local', nombre: 'Arcilla local (región de Jiquilpan)', recurso: null, fracciones: {}, notas: 'Se mezcla con la fibra de ficus, compost o humus y el inóculo.' },
+    { id: 'humus', nombre: 'Compost maduro o humus', recurso: null, fracciones: {}, notas: 'Parte de la matriz junto con la fibra de ficus y la arcilla local.' },
   ],
 
   // Fórmulas de mezcla (porcentajes en masa). Al crear un lote se eligen y se escalan a la masa deseada.
   formulas: [
     {
-      id: 'formula-base-150g', nombre: 'Fórmula base del documento (150 g)', masaTotalG: 150,
+      id: 'formula-base-150g', nombre: 'Receta de 150 g del documento', masaTotalG: 150,
       ingredientes: [
         { ingredienteId: 'biochar-ramas-ficus', porcentaje: 35 },
         { ingredienteId: 'harina-pasto-hojas', porcentaje: 30 },
         { ingredienteId: 'compost-hojas', porcentaje: 15 },
         { ingredienteId: 'pasta-aglutinante', porcentaje: 20 },
       ],
-      notas: '52.5 g biochar + 45 g harina + 22.5 g compost + 30 g pasta aglutinante = 150 g. (El documento indica 55 % / 30 % / 15 %, que no coincide con los gramos.)',
+      notas: 'Para preparar 150 g de materia prima: 52.5 g de biochar de ramas de ficus, 45 g de harina hecha de pasto y hojas, 22.5 g de compost de hojas y 30 g de pasta aglutinante húmeda.',
     },
     {
-      id: 'formula-arcilla-ficus', nombre: 'Bola de arcilla con escamas de ficus', masaTotalG: 1000,
+      id: 'composicion-documento', nombre: 'Composición del documento (55 / 30 / 15 %)', masaTotalG: 150,
       ingredientes: [
-        { ingredienteId: 'arcilla-local', porcentaje: 50 },
-        { ingredienteId: 'compost-hojas', porcentaje: 30 },
-        { ingredienteId: 'escamas-ficus', porcentaje: 20 },
+        { ingredienteId: 'biochar-ramas-ficus', porcentaje: 55 },
+        { ingredienteId: 'harina-pasto-hojas', porcentaje: 30 },
+        { ingredienteId: 'compost-hojas', porcentaje: 15 },
       ],
-      notas: 'Concepto clásico de bola de arcilla con fibra de ficus como malla interna.',
+      notas: 'Composición: biochar de ramas de ficus 55 %, harina hecha de pasto y hojas 30 %, compost de hojas o molienda fina 15 %.',
     },
   ],
 };

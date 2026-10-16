@@ -29,7 +29,8 @@ export default function Lotes() {
   const [formulaId, setFormulaId] = useState<string | null>(null);
   const [masaTotal, setMasaTotal] = useState('');
   const [filas, setFilas] = useState<Fila[]>([]);
-  const [pesoPildora, setPesoPildora] = useState('10');
+  const [cantidad, setCantidad] = useState('');
+  const [pesoPildora, setPesoPildora] = useState('');
   const [diametro, setDiametro] = useState('25');
   const [aditivos, setAditivos] = useState<string[]>([]);
   const [aditivosDetalle, setAditivosDetalle] = useState('');
@@ -79,7 +80,8 @@ export default function Lotes() {
   const lista = filas.map(f => ({ ingredienteId: f.ingredienteId, gramos: num(f.gramos) })).filter(f => f.gramos > 0);
   const balance = balanceDeMasa(lista, ingredientes, cat?.componentes ?? []);
   const consumo = consumoDeBiomasa(lista, ingredientes);
-  const esferas = num(pesoPildora) > 0 ? Math.floor(balance.masaTotalG / num(pesoPildora)) : 0;
+  // Esferas: las que se contaron, o masa total / peso de una esfera
+  const esferas = num(cantidad) > 0 ? num(cantidad) : num(pesoPildora) > 0 ? Math.floor(balance.masaTotalG / num(pesoPildora)) : 0;
   const inventario = data?.inventario;
   const faltantes = Object.entries(consumo).filter(([r, kg]) => kg > ((inventario?.[r as keyof InventarioBiomasa] as number) ?? 0));
   const maxComp = Math.max(1, ...Object.values(balance.componentes).map(c => c.porcentaje));
@@ -87,12 +89,14 @@ export default function Lotes() {
   const enviar = async () => {
     if (!especieId) return alerta('Falta dato', 'Elige la especie');
     if (!lista.length) return alerta('Falta dato', 'Agrega ingredientes con sus gramos');
+    if (!num(cantidad) && !num(pesoPildora)) return alerta('Falta dato', 'Indica cuántas esferas salieron o pesa una esfera');
     setEnviando(true);
     try {
       const lote = await api.crearLote({
         especieId,
         formulaId: formulaId ?? undefined,
         ingredientes: lista,
+        cantidad: num(cantidad) || undefined,
         pesoPildoraG: num(pesoPildora) || undefined,
         diametroMm: num(diametro) || undefined,
         aditivos,
@@ -102,7 +106,7 @@ export default function Lotes() {
       setNotas('');
       alerta(
         'Lote creado',
-        `Código ${lote.codigo}: ${lote.cantidad} esferas. Escríbelo en la charola de secado (a la sombra).${lote.advertencia ? `\n\n⚠️ ${lote.advertencia}` : ''}`,
+        `Código ${lote.codigo}: ${lote.cantidad} esferas. Déjalas secar a la sombra.${lote.advertencia ? `\n\n⚠️ ${lote.advertencia}` : ''}`,
       );
       recargar();
     } catch (e) {
@@ -142,14 +146,15 @@ export default function Lotes() {
         ))}
       </View>
 
+      <Campo etiqueta="Diámetro de las esferas (mm)" value={diametro} onChangeText={setDiametro} keyboardType="decimal-pad" ayuda="Del tamaño de una canica grande: 2 a 3 cm" />
       <View style={styles.fila}>
-        <View style={{ flex: 1 }}><Campo etiqueta="Peso por esfera (g)" value={pesoPildora} onChangeText={setPesoPildora} keyboardType="decimal-pad" /></View>
-        <View style={{ flex: 1 }}><Campo etiqueta="Diámetro (mm)" value={diametro} onChangeText={setDiametro} keyboardType="decimal-pad" ayuda="Canica grande: 20–30 mm" /></View>
+        <View style={{ flex: 1 }}><Campo etiqueta="Esferas que salieron" value={cantidad} onChangeText={setCantidad} keyboardType="number-pad" placeholder="Cuéntalas" /></View>
+        <View style={{ flex: 1 }}><Campo etiqueta="o peso de una esfera (g)" value={pesoPildora} onChangeText={setPesoPildora} keyboardType="decimal-pad" placeholder="Pésala" /></View>
       </View>
 
       {lista.length ? (
         <Tarjeta>
-          <Text style={styles.resumen}>{balance.masaTotalG} g de mezcla → {esferas} esferas de {pesoPildora} g</Text>
+          <Text style={styles.resumen}>{balance.masaTotalG} g de mezcla{esferas ? ` → ${esferas} esferas` : ''}</Text>
           <Text style={styles.subtitulo}>Composición estimada (balance de masa, base seca)</Text>
           {Object.entries(balance.componentes).filter(([, c]) => c.gramos > 0).map(([comp, c]) => (
             <Barra key={comp} etiqueta={`${NOMBRE_COMPONENTE[comp] ?? comp} · ${c.gramos} g`} valor={c.porcentaje} max={maxComp} sufijo=" %" />
@@ -164,17 +169,17 @@ export default function Lotes() {
       {faltantes.length ? (
         <Aviso texto={`No alcanza el inventario: ${faltantes.map(([r, kg]) => `${NOMBRE_RECURSO[r] ?? r} (necesitas ${kg} kg, hay ${inventario?.[r as keyof InventarioBiomasa] ?? 0} kg)`).join('; ')}. Regístralo en Acopio → Biomasa.`} />
       ) : null}
-      {num(diametro) && (num(diametro) < 20 || num(diametro) > 30) ? <Aviso tipo="info" texto="El documento recomienda esferas de 2 a 3 cm (20–30 mm)." /> : null}
+      {num(diametro) && (num(diametro) < 20 || num(diametro) > 30) ? <Aviso tipo="info" texto="El documento indica esferas de 2 a 3 cm (20–30 mm)." /> : null}
 
       <OpcionesMultiples
-        etiqueta="Inóculo / aditivos biológicos"
+        etiqueta="Inóculo local (micorrizas de suelo forestal o bacterias benéficas)"
         opciones={(cat?.aditivos ?? []).map(a => a.id)}
         nombres={nombresDe(cat?.aditivos)}
         valores={aditivos}
         onChange={setAditivos}
       />
       {aditivos.length ? (
-        <Campo etiqueta="Detalle del inóculo" value={aditivosDetalle} onChangeText={setAditivosDetalle} placeholder="Ej: micorrizas de suelo forestal, 5 g por kg de mezcla" />
+        <Campo etiqueta="Detalle del inóculo" value={aditivosDetalle} onChangeText={setAditivosDetalle} placeholder="Ej: origen del suelo forestal, cantidad usada" />
       ) : null}
       <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline placeholder="Ej: secado a la sombra, charola 3" />
       <Boton texto="Crear lote" color={colores.azul} onPress={enviar} cargando={enviando} />
