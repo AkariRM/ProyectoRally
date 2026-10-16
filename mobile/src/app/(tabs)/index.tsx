@@ -70,7 +70,7 @@ Servidor: ${BASE_URL}`} /> : null}
       <View style={styles.cuadricula}>
         {PASOS.map((p, i) => (
           <View key={i} style={[styles.celda, { flexBasis: escritorio ? '30%' : '100%' }]}>
-            <Tarjeta style={[styles.paso, escritorio && { flex: 1 }]}>
+            <Tarjeta style={escritorio ? { ...styles.paso, flex: 1 } : styles.paso}>
               <Text style={styles.pasoNumero}>{i + 1}</Text>
               <Text style={styles.pasoEmoji}>{p.emoji}</Text>
               <Text style={styles.pasoTexto}>{p.texto}</Text>
