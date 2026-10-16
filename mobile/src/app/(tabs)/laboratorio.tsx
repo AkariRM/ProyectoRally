@@ -7,7 +7,10 @@ import { useUsuario } from '@/lib/usuario';
 import { Aviso, Boton, Campo, colores, fecha, Opciones, Pantalla, Seccion, Tarjeta, OpcionesMultiples } from '@/components/ui';
 import { alerta } from '@/lib/alerta';
 
-type Vista = 'lotes' | 'ensayos';
+import Lotes from '@/components/laboratorio/Lotes';
+import Referencia from '@/components/laboratorio/Referencia';
+
+type Vista = 'lotes' | 'ensayos' | 'referencia';
 
 // Pruebas que se calculan a partir de pesadas o conteos
 function calcular(prueba: string, v: Record<string, string>): number | null {
@@ -27,121 +30,6 @@ function calcular(prueba: string, v: Record<string, string>): number | null {
 
 // Pruebas con calculadora integrada (las demás se capturan como valor directo)
 const CALCULADAS = ['retencionAgua', 'perdidaAgua24h', 'germinacion'];
-
-function Lotes() {
-  const { usuario } = useUsuario();
-  const { data, error, recargar } = useData(async () => {
-    const [lotes, especies, inventario] = await Promise.all([api.lotes(), api.especies(), api.inventarioBiomasa()]);
-    return { lotes, especies, inventario };
-  });
-  const [especieId, setEspecieId] = useState<string | null>(null);
-  const [cantidad, setCantidad] = useState('');
-  const [arcilla, setArcilla] = useState('50');
-  const [compost, setCompost] = useState('30');
-  const [ficus, setFicus] = useState('20');
-  const [diametro, setDiametro] = useState('');
-  const [pesoPildora, setPesoPildora] = useState('20');
-  const [aditivos, setAditivos] = useState<string[]>([]);
-  const { data: catalogos } = useCatalogos();
-  const [aditivosDetalle, setAditivosDetalle] = useState('');
-  const [notas, setNotas] = useState('');
-  const [enviando, setEnviando] = useState(false);
-
-  // kg de ficus triturado que se necesitan para el lote
-  const kgFicus = (Number(cantidad || 0) * Number(pesoPildora || 0) * Number(ficus || 0)) / 100 / 1000;
-  const trituradaDisponible = data?.inventario.triturada ?? 0;
-
-  const especies = data?.especies ?? [];
-  const nombreEspecie = Object.fromEntries(especies.map(e => [e.id, e.nombreComun]));
-  const suma = Number(arcilla || 0) + Number(compost || 0) + Number(ficus || 0);
-  const especie = especies.find(e => e.id === especieId);
-
-  const enviar = async () => {
-    if (!especieId) return alerta('Falta dato', 'Elige la especie');
-    setEnviando(true);
-    try {
-      const lote = await api.crearLote({
-        especieId,
-        cantidad: Number(cantidad),
-        arcillaPct: Number(arcilla),
-        compostPct: Number(compost),
-        ficusPct: Number(ficus),
-        diametroMm: diametro ? Number(diametro) : undefined,
-        pesoPildoraG: Number(pesoPildora) || undefined,
-        aditivos,
-        aditivosDetalle: aditivosDetalle || undefined,
-        notas,
-        usuarioId: usuario?.id,
-      });
-      setCantidad('');
-      setNotas('');
-      alerta(
-        'Lote creado',
-        `Código ${lote.codigo}. Escríbelo en la charola de secado.${lote.advertencia ? `
-
-⚠️ ${lote.advertencia}` : ''}`,
-      );
-      recargar();
-    } catch (e) {
-      alerta('Error', (e as Error).message);
-    } finally {
-      setEnviando(false);
-    }
-  };
-
-  return (
-    <>
-      {error ? <Aviso texto={error} /> : null}
-      <Seccion>Nuevo lote de producción</Seccion>
-      <Opciones etiqueta="Especie" opciones={especies.map(e => e.id)} nombres={nombreEspecie} valor={especieId} onChange={setEspecieId} />
-      {especie ? (
-        <Aviso
-          tipo="info"
-          texto={`${especie.nombreCientifico}\nTratamiento: ${especie.tratamientoPregerminativo ?? '–'}\nSiembra: ${especie.temporadaSiembra ?? '–'}${especie.validada ? '' : '\n⚠️ Pendiente de validar por Bioquímica'}`}
-        />
-      ) : null}
-      <Campo etiqueta="Número de píldoras" value={cantidad} onChangeText={setCantidad} keyboardType="number-pad" placeholder="Ej: 100" />
-      <Text style={styles.etiqueta}>Mezcla (% en peso seco)</Text>
-      <View style={styles.mezcla}>
-        <View style={{ flex: 1 }}><Campo etiqueta="Arcilla" value={arcilla} onChangeText={setArcilla} keyboardType="decimal-pad" /></View>
-        <View style={{ flex: 1 }}><Campo etiqueta="Compost" value={compost} onChangeText={setCompost} keyboardType="decimal-pad" /></View>
-        <View style={{ flex: 1 }}><Campo etiqueta="Ficus" value={ficus} onChangeText={setFicus} keyboardType="decimal-pad" /></View>
-      </View>
-      <Text style={[styles.suma, { color: Math.abs(suma - 100) > 0.5 ? colores.rojo : colores.verde }]}>Suma: {suma}%</Text>
-      <Campo etiqueta="Peso por píldora (g)" value={pesoPildora} onChangeText={setPesoPildora} keyboardType="decimal-pad" />
-      {kgFicus > 0 ? (
-        <Aviso
-          tipo={kgFicus > trituradaDisponible ? 'error' : 'ok'}
-          texto={`Necesitas ${kgFicus.toFixed(2)} kg de ficus triturado · hay ${trituradaDisponible} kg en inventario`}
-        />
-      ) : null}
-      <OpcionesMultiples
-        etiqueta="Aditivos biológicos (opcional)"
-        opciones={(catalogos?.aditivos ?? []).map(a => a.id)}
-        nombres={nombresDe(catalogos?.aditivos)}
-        valores={aditivos}
-        onChange={setAditivos}
-      />
-      {aditivos.length ? (
-        <Campo etiqueta="Detalle de aditivos" value={aditivosDetalle} onChangeText={setAditivosDetalle} placeholder="Ej: 5 g de inóculo de micorrizas por kg de mezcla" />
-      ) : null}
-      <Campo etiqueta="Diámetro (mm, opcional)" value={diametro} onChangeText={setDiametro} keyboardType="decimal-pad" placeholder="Ej: 25" />
-      <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline placeholder="Ej: ficus triturado en licuadora, fibra corta" />
-      <Boton texto="Crear lote" color={colores.azul} onPress={enviar} cargando={enviando} />
-
-      {data?.lotes.length ? <Seccion>Lotes</Seccion> : null}
-      {[...(data?.lotes ?? [])].reverse().map(l => (
-        <Tarjeta key={l.id}>
-          <Text style={styles.nombre}>{l.codigo} · {nombreEspecie[l.especieId] ?? l.especieId}</Text>
-          <Text style={styles.detalle}>
-            {l.cantidad} píldoras · arcilla {l.arcillaPct}% · compost {l.compostPct}% · ficus {l.ficusPct}%
-            {l.kgFicus !== undefined ? ` · ${l.kgFicus} kg ficus` : ''}{l.aditivos?.length ? ` · + ${l.aditivos.map(a => nombresDe(catalogos?.aditivos)[a] ?? a).join(', ')}` : ''} · {fecha(l.creadoEn)}
-          </Text>
-        </Tarjeta>
-      ))}
-    </>
-  );
-}
 
 function Ensayos() {
   const { usuario } = useUsuario();
@@ -256,8 +144,16 @@ export default function Laboratorio() {
   const [vista, setVista] = useState<Vista>('lotes');
   return (
     <Pantalla titulo="Laboratorio 🧪" subtitulo="Producción de lotes y pruebas de las mezclas">
-      <Opciones etiqueta="" opciones={['lotes', 'ensayos'] as const} nombres={{ lotes: 'Lotes', ensayos: 'Ensayos' }} valor={vista} onChange={setVista} />
-      {vista === 'lotes' ? <Lotes /> : <Ensayos />}
+      <Opciones
+        etiqueta=""
+        opciones={['lotes', 'ensayos', 'referencia'] as const}
+        nombres={{ lotes: '🧪 Lotes', ensayos: '📏 Ensayos', referencia: '📖 Composición del Ficus' }}
+        valor={vista}
+        onChange={setVista}
+      />
+      {vista === 'lotes' ? <Lotes /> : null}
+      {vista === 'ensayos' ? <Ensayos /> : null}
+      {vista === 'referencia' ? <Referencia /> : null}
     </Pantalla>
   );
 }

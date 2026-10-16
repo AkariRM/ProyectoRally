@@ -46,24 +46,39 @@ export interface EntregaPoda {
   creadoEn: string;
 }
 
+export interface IngredienteLote {
+  ingredienteId: string;
+  gramos: number;
+}
+
+export interface Composicion {
+  masaTotalG: number;
+  componentes: Record<string, { gramos: number; porcentaje: number }>;
+}
+
 export interface Lote {
   id: string;
   codigo: string;
   especieId: string;
+  formulaId?: string;
+  ingredientes?: IngredienteLote[];
   cantidad: number;
-  arcillaPct: number;
-  compostPct: number;
-  ficusPct: number;
-  semillasPorPildora: number;
-  diametroMm?: number;
   pesoPildoraG?: number;
+  diametroMm?: number;
+  semillasPorPildora: number;
+  composicion?: Composicion;
+  consumo?: Record<string, number>; // kg tomados de cada inventario
   aditivos?: string[];
   aditivosDetalle?: string;
-  kgFicus?: number;
   advertencia?: string;
   usuarioId?: string;
   notas?: string;
   creadoEn: string;
+  // Lotes anteriores (mezcla en %)
+  arcillaPct?: number;
+  compostPct?: number;
+  ficusPct?: number;
+  kgFicus?: number;
 }
 
 export interface Dispersion {
@@ -137,7 +152,7 @@ export interface Stats extends ResumenDispersion {
   ensayos: { tratamiento: string; prueba: string; unidad: string; n: number; promedio: number | null }[];
 }
 
-export type TipoProceso = 'secado' | 'triturado';
+export type TipoProceso = 'secado' | 'triturado' | 'pirolisis' | 'molienda';
 export type Fraccion = 'fina' | 'media' | 'mixta';
 
 export interface ProcesoBiomasa {
@@ -146,6 +161,7 @@ export interface ProcesoBiomasa {
   kgEntrada: number;
   kgSalida: number;
   fraccion?: Fraccion;
+  temperaturaC?: number;
   metodo?: string;
   dias?: number;
   usuarioId?: string;
@@ -157,10 +173,17 @@ export interface InventarioBiomasa {
   fresca: number;
   seca: number;
   triturada: number;
+  biochar: number;
+  harina: number;
   recibida: number;
   secaObtenida: number;
   trituradaObtenida: number;
+  biocharObtenido: number;
+  harinaObtenida: number;
   usada: number;
+  usadaPor: Record<string, number>;
+  rendimientoPirolisis: number | null;
+  rendimientoMolienda: number | null;
   trituradaPorFraccion: Record<string, number>;
   recibidaPorTipo: Record<string, number>;
   perdidaSecado: number | null;
@@ -275,7 +298,24 @@ export interface Prueba extends ItemCatalogo {
   calculada?: boolean;
 }
 
+export type RecursoBiomasa = 'triturada' | 'biochar' | 'harina';
+
+export interface Ingrediente extends ItemCatalogo {
+  recurso?: RecursoBiomasa | null; // inventario del que se descuenta
+  fracciones: Record<string, number>; // base seca, 0–1
+  notas?: string;
+}
+
+export interface Formula extends ItemCatalogo {
+  masaTotalG?: number;
+  ingredientes: { ingredienteId: string; porcentaje: number }[];
+  notas?: string;
+}
+
 export interface Catalogos {
+  ingredientes: Ingrediente[];
+  formulas: Formula[];
+  componentes: string[];
   tiposMaterial: ItemCatalogo[];
   aditivos: ItemCatalogo[];
   tratamientos: ItemCatalogo[];

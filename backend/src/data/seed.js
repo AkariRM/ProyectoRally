@@ -67,6 +67,16 @@ module.exports = {
       tratamientoPregerminativo: 'Escarificación ligera',
       validada: false,
     },
+    {
+      id: 'agave-silvestre',
+      nombreComun: 'Agave silvestre (maguey bruto)',
+      nombreCientifico: 'Agave inaequidens',
+      tipo: 'suculenta',
+      temporadaSiembra: 'Junio–julio (inicio de lluvias)',
+      tratamientoPregerminativo: 'Ninguno; semilla pequeña, siembra superficial',
+      validada: false,
+      notas: 'Mencionado en el documento de la problemática; muy resistente a la sequía y a laderas erosionadas',
+    },
     // Especies para laderas quemadas (encino-pino y leguminosas arbóreas)
     {
       id: 'encino-castanea',

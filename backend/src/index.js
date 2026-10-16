@@ -39,6 +39,8 @@ app.use('/api/tratamientos', catalogos.tratamientos);
 app.use('/api/pruebas', catalogos.pruebas);
 app.use('/api/aditivos', catalogos.aditivos);
 app.use('/api/tipos-material', catalogos.tiposMaterial);
+app.use('/api/ingredientes', catalogos.ingredientes);
+app.use('/api/formulas', catalogos.formulas);
 app.use('/api/puntos-acopio', require('./routes/puntosAcopio'));
 app.use('/api/entregas-poda', require('./routes/entregasPoda'));
 app.use('/api/procesos-biomasa', require('./routes/procesosBiomasa'));
@@ -67,6 +69,9 @@ app.get('/api/catalogos', (req, res) => {
       aditivos: db.list('aditivos'),
       tratamientos: db.list('tratamientos'),
       pruebas: db.list('pruebas'),
+      ingredientes: db.list('ingredientes'),
+      formulas: db.list('formulas'),
+      componentes: require('./lib/balance').COMPONENTES,
       riesgos: RIESGOS,
       estadosArea: ESTADOS,
       roles: ROLES,

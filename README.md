@@ -80,14 +80,15 @@ Un punto de acopio con entregas registradas, o que es destino de alguna zona, no
 | Zonas de poda | `/api/zonas-poda`, `POST /:id/generar-jornadas` | Dónde se poda ficus, días/horario y punto destino |
 | Jornadas | `/api/jornadas/proximas`, `POST /:id/apuntarme`, `PUT /:id/estado` | Poda en fecha concreta; al marcarla recolectada crea la entrega en el punto destino |
 | Solicitudes | `/api/solicitudes`, `PUT /:id/estado` | Recolección a domicilio con GPS: pendiente → asignada → recolectada |
-| Biomasa | `/api/procesos-biomasa`, `/api/procesos-biomasa/inventario` | Secado y triturado; inventario fresca → seca → triturada → usada, kg por tipo de material |
+| Biomasa | `/api/procesos-biomasa`, `/api/procesos-biomasa/inventario` | Secado, triturado (escamas 2–3 mm), pirólisis (biochar) y molienda (harina); inventario de cada producto |
 | Áreas a reforestar | `/api/areas-reforestacion` | Laderas quemadas/degradadas: círculo o polígono, riesgo, estado, hectáreas, especies recomendadas |
 | Jornadas de reforestación | `/api/jornadas-reforestacion/proximas`, `POST /:id/inscribirme`, `GET /:id/inscritos`, `PUT /:id/cerrar` | Convocatoria con cupo; al cerrarla registra asistencia y la dispersión |
 | Exportar | `/api/exportar`, `/api/exportar/<recurso>.csv` o `.geojson` | CSV para Excel, GeoJSON para QGIS (admin, municipio, brigadista) |
 | Ruta | `/api/ruta?lat=&lng=&puntoId=` | Ruta sugerida de recolección por cercanía + enlace a Google Maps |
 | Catálogos | `/api/catalogos` | Tipos de material, aditivos, tratamientos, pruebas, riesgos, estados, roles |
 | Catálogos editables | `/api/tratamientos`, `/api/pruebas`, `/api/aditivos`, `/api/tipos-material`, `/api/especies` | Solo admin crea, edita o elimina; no se elimina lo que está en uso |
-| Lotes | `/api/lotes` | Producción: especie, cantidad, mezcla y kg de ficus usado (se descuenta del inventario) |
+| Lotes | `/api/lotes` | Producción: especie, fórmula e **ingredientes en gramos**; calcula esferas, **balance de masa** y biomasa usada |
+| Ingredientes y fórmulas | `/api/ingredientes`, `/api/formulas` | Catálogos editables: composición (fracciones) de cada insumo y mezclas en % |
 | Dispersiones | `/api/dispersiones` | Dónde (GPS) y cuántas píldoras se lanzaron |
 | Seguimientos | `/api/seguimientos?dispersionId=` | Plántulas germinadas y vivas por revisión |
 | Ensayos | `/api/ensayos`, `/api/ensayos/catalogo` | Mediciones de laboratorio por tratamiento |
@@ -122,10 +123,21 @@ Para otra URL, crea `mobile/.env` con `EXPO_PUBLIC_API_URL=http://<ip>:3000/api`
 | **Reforestar → Jornadas** | Jornadas de reforestación masiva: inscribirse (con cupo y avisos), pasar lista, registrar píldoras sembradas |
 | **Reforestar → Dispersiones** | Registrar dispersiones ligadas a un área; abrir su seguimiento |
 | **Seguimiento** | Plántulas germinadas, vivas y **altura promedio** a las 2, 4 y 8 semanas |
-| **Laboratorio** | Lotes (mezcla y **aditivos biológicos**) y ensayos con calculadora por pesadas |
+| **Laboratorio** | Lotes por fórmula (gramos, esferas de 2–3 cm, balance de masa, inóculo), ensayos y composición de referencia del Ficus |
 | **Impacto** | Biomasa recuperada por tipo, reforestación, avance por área y especie; **exportar** a QGIS/Excel |
 
 ---
+
+## Fórmula y balance de masa
+
+Según el documento de la problemática:
+- **Fórmula base para 150 g:** 52.5 g de biochar de ramas de ficus, 45 g de harina de pasto y hojas, 22.5 g de compost de hojas y 30 g de pasta aglutinante húmeda.
+- **Al crear un lote** se elige la fórmula y la masa a preparar. La app reescala los gramos, calcula el número de esferas (de 2–3 cm, unos 10 g cada una) y el **balance de masa**:
+
+  m_j = Σ m_ingrediente × x_j,ingrediente  →  w_j = m_j / M_total × 100
+
+- Las fracciones de cada ingrediente (celulosa, hemicelulosa, lignina, polifenoles…) se editan en **Catálogos → Ingredientes**.
+- Las inconsistencias numéricas que se encontraron en el documento están en [docs/revision-documento-problema.md](docs/revision-documento-problema.md).
 
 ## Avisos de poda
 

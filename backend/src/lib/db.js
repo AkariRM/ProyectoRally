@@ -25,6 +25,29 @@ let cola = Promise.resolve();
 
 const copia = x => JSON.parse(JSON.stringify(x));
 
+// Catálogos a los que se agregan solos los elementos nuevos de seed.js en cada versión
+// (p. ej. una especie nueva). Los que un admin borró no se vuelven a agregar.
+const CATALOGOS_SEMILLA = ['especies', 'tiposMaterial', 'tratamientos', 'pruebas', 'aditivos', 'ingredientes', 'formulas'];
+
+// sembrados: { coleccion: [ids que ya se sembraron alguna vez] }. Devuelve los elementos agregados.
+function sembrarNuevos(datos, sembrados) {
+  const agregados = [];
+  for (const col of CATALOGOS_SEMILLA) {
+    if (!Array.isArray(datos[col])) continue;
+    // Primera vez sin registro: lo que ya existe cuenta como sembrado
+    const ya = new Set(sembrados[col] || datos[col].map(x => x.id));
+    for (const item of seed[col] || []) {
+      if (!ya.has(item.id) && !datos[col].some(x => x.id === item.id)) {
+        datos[col].push(copia(item));
+        agregados.push({ coleccion: col, item });
+      }
+      ya.add(item.id);
+    }
+    sembrados[col] = [...ya];
+  }
+  return agregados;
+}
+
 // ── Modo archivo ──────────────────────────────────────────────────────────────
 
 function cargarArchivo() {
@@ -42,7 +65,8 @@ function cargarArchivo() {
       cambio = true;
     }
   }
-  if (cambio) guardarArchivo();
+  const agregados = sembrarNuevos(db, (db._semillas = db._semillas || {}));
+  if (cambio || agregados.length) guardarArchivo();
 }
 
 function guardarArchivo() {
@@ -111,9 +135,11 @@ async function iniciarPostgres() {
   const { rows } = await pool.query(`select coleccion, datos from ${TABLA} order by datos->>'creadoEn' nulls first`);
   db = {};
   let inicializadas = [];
+  let sembrados = null;
   for (const { coleccion, datos } of rows) {
     if (coleccion === META) {
       inicializadas = datos.inicializadas || [];
+      sembrados = datos.sembrados || null;
       continue;
     }
     (db[coleccion] = db[coleccion] || []).push(datos);
@@ -135,9 +161,19 @@ async function iniciarPostgres() {
           }
         }
       }
-      await upsert(cliente, META, { id: 'colecciones', inicializadas: Object.keys(seed) });
     });
     console.log(`🗄️  Colecciones inicializadas en PostgreSQL: ${nuevas.join(', ')}`);
+  }
+
+  // Elementos nuevos de los catálogos (y registro de lo ya sembrado)
+  const registro = sembrados || {};
+  const agregados = sembrarNuevos(db, registro);
+  if (nuevas.length || agregados.length || !sembrados) {
+    await transaccion(async cliente => {
+      for (const { coleccion, item } of agregados) await upsert(cliente, coleccion, item);
+      await upsert(cliente, META, { id: 'colecciones', inicializadas: Object.keys(seed), sembrados: registro });
+    });
+    if (agregados.length) console.log(`🌱 Agregados al catálogo: ${agregados.map(a => `${a.coleccion}/${a.item.id}`).join(', ')}`);
   }
   const total = Object.values(db).reduce((t, items) => t + items.length, 0);
   console.log(`🗄️  PostgreSQL conectado (${total} registros)`);

@@ -6,12 +6,14 @@ import { useUsuario } from '@/lib/usuario';
 import { NOMBRE_ROL } from '@/lib/catalogos';
 import { Aviso, Boton, colores, Dato, Fila, Pantalla, Seccion, Tarjeta } from '@/components/ui';
 
+// Proceso artesanal del documento de la problemática
 const PASOS = [
-  { emoji: '✂️', texto: 'Se recolecta la poda de Ficus benjamina en los puntos de acopio.' },
-  { emoji: '☀️', texto: 'Se seca y se tritura la hoja y la rama.' },
-  { emoji: '🟤', texto: 'Se mezcla con arcilla y compost, y se envuelve una semilla nativa.' },
-  { emoji: '🌥️', texto: 'Las píldoras se secan a la sombra.' },
-  { emoji: '🌱', texto: 'Se dispersan en campo y se registra el seguimiento de germinación.' },
+  { emoji: '✂️', texto: 'Se recolectan hojas secas, ramillas tiernas y ramas de la poda urbana de Ficus benjamina (camellones, plazas, traspatios) y pasto.' },
+  { emoji: '☀️', texto: 'Se secan al sol. Hojas y ramillas se trituran a escamas de 2–3 mm; las ramas se convierten en biochar (pirólisis > 450 °C) y el pasto en harina.' },
+  { emoji: '⚖️', texto: 'Se pesa la mezcla según la fórmula (biochar, harina, compost y pasta aglutinante) con un inóculo local de micorrizas o bacterias.' },
+  { emoji: '🌰', texto: 'Al centro va una semilla nativa resistente (mezquite, huizache, agave silvestre) y se forman esferas de 2–3 cm.' },
+  { emoji: '🌥️', texto: 'Las esferas se secan a la sombra.' },
+  { emoji: '🌱', texto: 'Se dispersan en zonas áridas, laderas erosionadas y bordes degradados de la Ciénega de Chapala, sin riego, y se da seguimiento a la germinación.' },
 ];
 
 export default function Inicio() {
@@ -20,6 +22,10 @@ export default function Inicio() {
 
   return (
     <Pantalla sinAtras titulo="Avance del proyecto 🌱" subtitulo="Reforestación con poda de Ficus benjamina · Jiquilpan y Sahuayo">
+      <Aviso
+        tipo="info"
+        texto="El problema: grandes volúmenes de biomasa vegetal urbana se tratan como desecho. Bio Red la convierte en píldoras bióticas para reforestar la Ciénega de Chapala sin riego artificial."
+      />
       {error ? <Aviso texto={`${error}\nServidor: ${BASE_URL}`} /> : null}
 
       {usuario ? (

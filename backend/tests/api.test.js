@@ -25,7 +25,14 @@ const conToken = token => req => {
 const comoAdmin = req => conToken(admin.token)(req);
 const comoVol = req => conToken(vol.token)(req);
 
-describe('API Píldoras Bióticas', () => {
+// Bola de arcilla clásica: 1000 g (500 arcilla, 300 compost, 200 escamas de ficus)
+const ARCILLA_FICUS = [
+  { ingredienteId: 'arcilla-local', gramos: 500 },
+  { ingredienteId: 'compost-hojas', gramos: 300 },
+  { ingredienteId: 'escamas-ficus', gramos: 200 },
+];
+
+describe('API Bio Red', () => {
   beforeEach(async () => {
     admin = await login('admin@test.mx', 'admin123');
     await comoAdmin(request(app).post('/api/admin/reset')).expect(200);
@@ -40,12 +47,56 @@ describe('API Píldoras Bióticas', () => {
     expect(puntos.body.data.map(p => p.id)).toContain('bosque-cuauhtemoc');
   });
 
-  test('valida que la mezcla del lote sume 100%', async () => {
-    const res = await comoVol(request(app))
-      .post('/api/lotes')
-      .send({ especieId: 'mezquite', cantidad: 50, arcillaPct: 60, compostPct: 20, ficusPct: 10 });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/100%/);
+  test('el lote requiere ingredientes válidos en gramos', async () => {
+    const sin = await comoVol(request(app)).post('/api/lotes').send({ especieId: 'mezquite' });
+    expect(sin.status).toBe(400);
+    const malo = await comoVol(request(app)).post('/api/lotes')
+      .send({ especieId: 'mezquite', ingredientes: [{ ingredienteId: 'no-existe', gramos: 10 }, { ingredienteId: 'humus', gramos: 0 }] });
+    expect(malo.status).toBe(400);
+    expect(malo.body.errores).toEqual(expect.arrayContaining(['no existe el ingrediente no-existe', 'los gramos de cada ingrediente deben ser mayores que 0']));
+  });
+
+  test('fórmula base del documento: 150 g, balance de masa y consumo de biomasa', async () => {
+    const formulas = (await comoVol(request(app)).get('/api/formulas')).body.data;
+    const base = formulas.find(f => f.id === 'formula-base-150g');
+    // 35/30/15/20 % de 150 g = 52.5 g biochar, 45 g harina, 22.5 g compost, 30 g pasta
+    const ingredientes = base.ingredientes.map(i => ({ ingredienteId: i.ingredienteId, gramos: (base.masaTotalG * i.porcentaje) / 100 }));
+    expect(ingredientes.map(i => i.gramos)).toEqual([52.5, 45, 22.5, 30]);
+
+    const lote = await comoVol(request(app)).post('/api/lotes')
+      .send({ especieId: 'mezquite', formulaId: base.id, ingredientes }).expect(201);
+    const d = lote.body.data;
+    expect(d).toMatchObject({ pesoPildoraG: 10, diametroMm: 25, cantidad: 15 }); // 150 g / 10 g
+    expect(d.composicion.masaTotalG).toBe(150);
+    // Σ masa × fracción (fracciones del catálogo): celulosa 0 + 15.75 + 2.25 = 18 g → 12 %
+    expect(d.composicion.componentes.celulosa).toEqual({ gramos: 18, porcentaje: 12 });
+    // hemicelulosa/pectinas 0 + 13.5 + 3.375 = 16.875 g → 11.25 %
+    expect(d.composicion.componentes.hemicelulosa).toEqual({ gramos: 16.88, porcentaje: 11.25 });
+    // lignina 7.875 + 6.75 + 7.875 = 22.5 g → 15 %
+    expect(d.composicion.componentes.lignina.porcentaje).toBe(15);
+    expect(d.consumo).toEqual({ biochar: 0.053, harina: 0.045 });
+    expect(d.advertencia).toMatch(/biochar/); // no había biochar registrado
+  });
+
+  test('pirólisis y molienda: biochar y harina en el inventario', async () => {
+    await comoVol(request(app)).post('/api/entregas-poda').send({ puntoId: 'plaza-jiquilpan', kg: 20, tipoMaterial: 'ramas gruesas' }).expect(201);
+    await comoVol(request(app)).post('/api/procesos-biomasa').send({ tipo: 'secado', kgEntrada: 20, kgSalida: 10 }).expect(201);
+    await comoVol(request(app)).post('/api/procesos-biomasa').send({ tipo: 'pirolisis', kgEntrada: 6, kgSalida: 1.8, temperaturaC: 500 }).expect(201);
+    await comoVol(request(app)).post('/api/procesos-biomasa').send({ tipo: 'molienda', kgEntrada: 3, kgSalida: 2.7 }).expect(201);
+    const mucho = await comoVol(request(app)).post('/api/procesos-biomasa').send({ tipo: 'triturado', kgEntrada: 2, kgSalida: 1.5 });
+    expect(mucho.status).toBe(400); // solo queda 1 kg seco
+
+    await comoVol(request(app)).post('/api/lotes').send({
+      especieId: 'mezquite',
+      ingredientes: [{ ingredienteId: 'biochar-ramas-ficus', gramos: 525 }, { ingredienteId: 'harina-pasto-hojas', gramos: 450 }],
+    }).expect(201);
+
+    const { body } = await comoVol(request(app)).get('/api/procesos-biomasa/inventario');
+    expect(body.data).toMatchObject({
+      seca: 1, harina: 2.25, biocharObtenido: 1.8, harinaObtenida: 2.7,
+      rendimientoPirolisis: 30, rendimientoMolienda: 90, usadaPor: { biochar: 0.53, harina: 0.45, triturada: 0 },
+    });
+    expect(body.data.biochar).toBeCloseTo(1.275, 1); // 1.8 producido − 0.525 usado
   });
 
   test('flujo completo: poda → lote → dispersión → seguimiento → stats', async () => {
@@ -53,9 +104,10 @@ describe('API Píldoras Bióticas', () => {
 
     const lote = await comoVol(request(app))
       .post('/api/lotes')
-      .send({ especieId: 'mezquite', cantidad: 100, arcillaPct: 50, compostPct: 30, ficusPct: 20 })
+      .send({ especieId: 'mezquite', ingredientes: ARCILLA_FICUS })
       .expect(201);
     expect(lote.body.data.codigo).toBe('L-001');
+    expect(lote.body.data.cantidad).toBe(100); // 1000 g / 10 g por esfera
 
     const disp = await comoVol(request(app))
       .post('/api/dispersiones')
@@ -98,12 +150,15 @@ describe('API Píldoras Bióticas', () => {
       .send({ tipo: 'triturado', kgEntrada: 3, kgSalida: 2.7, fraccion: 'fina' })
       .expect(201);
 
-    // 100 píldoras × 20 g × 20 % ficus = 0.4 kg
+    // 1000 g de mezcla con 400 g de escamas de ficus → 0.4 kg del inventario triturado
     const lote = await comoVol(request(app))
       .post('/api/lotes')
-      .send({ especieId: 'huizache', cantidad: 100, arcillaPct: 50, compostPct: 30, ficusPct: 20 })
+      .send({ especieId: 'huizache', ingredientes: [
+        { ingredienteId: 'arcilla-local', gramos: 400 }, { ingredienteId: 'compost-hojas', gramos: 200 },
+        { ingredienteId: 'escamas-ficus', gramos: 400 },
+      ] })
       .expect(201);
-    expect(lote.body.data.kgFicus).toBe(0.4);
+    expect(lote.body.data.consumo).toEqual({ triturada: 0.4 });
     expect(lote.body.data.advertencia).toBeUndefined();
 
     const { body } = await comoVol(request(app)).get('/api/procesos-biomasa/inventario');
@@ -331,12 +386,12 @@ describe('API Píldoras Bióticas', () => {
     expect(inv.body.data.recibidaPorTipo).toEqual({ hojas: 4, 'ramas finas': 6 });
 
     const lote = await comoVol(request(app)).post('/api/lotes').send({
-      especieId: 'tepeguaje', cantidad: 50, arcillaPct: 50, compostPct: 30, ficusPct: 20,
+      especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS,
       aditivos: ['micorrizas'], aditivosDetalle: '5 g de inóculo por kg de mezcla',
     }).expect(201);
     expect(lote.body.data.aditivos).toEqual(['micorrizas']);
     const malAditivo = await comoVol(request(app)).post('/api/lotes')
-      .send({ especieId: 'tepeguaje', cantidad: 5, arcillaPct: 50, compostPct: 30, ficusPct: 20, aditivos: ['magia'] });
+      .send({ especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS, aditivos: ['magia'] });
     expect(malAditivo.status).toBe(400);
 
     await comoVol(request(app)).post('/api/ensayos')
@@ -393,7 +448,7 @@ describe('API Píldoras Bióticas', () => {
     // Aditivo nuevo usable en lotes; tipo de material nuevo usable en entregas
     const ad = await comoAdmin(request(app).post('/api/aditivos').send({ nombre: 'Trichoderma' })).expect(201);
     await comoVol(request(app).post('/api/lotes')).send({
-      especieId: 'mezquite', cantidad: 10, arcillaPct: 50, compostPct: 30, ficusPct: 20, aditivos: [ad.body.data.id],
+      especieId: 'mezquite', ingredientes: ARCILLA_FICUS, aditivos: [ad.body.data.id],
     }).expect(201);
     const tm = await comoAdmin(request(app).post('/api/tipos-material').send({ nombre: 'Corteza' })).expect(201);
     await comoVol(request(app).post('/api/entregas-poda')).send({ puntoId: 'plaza-jiquilpan', kg: 2, tipoMaterial: tm.body.data.id }).expect(201);

@@ -102,7 +102,24 @@ Es la prueba más importante: confirma que el ficus no daña a la semilla.
 4. Germinación (%) = germinadas / sembradas × 100. Capturar en la app con la prueba **Germinación**.
 5. Usar en las píldoras el pretratamiento con mejor resultado.
 
+## 6b. Biochar y harina (fórmula del documento)
+
+1. **Biochar de ramas:**
+   - Ramas secas de ficus en un tambor metálico cerrado (retorta) a **más de 450 °C sin oxígeno**, 2–3 h.
+   - Deja enfriar cerrado, pesa el carbón y muélelo.
+   - Regístralo en **Acopio → Biomasa → Pirólisis**, con la temperatura.
+2. **Harina de pasto y hojas:**
+   - Muele pasto y hojas secas hasta harina fina y tamiza.
+   - Regístralo en **Acopio → Biomasa → Molienda**.
+3. **Escamas de ficus:**
+   - Hojas secas y ramillas tiernas trituradas a **2–3 mm**.
+   - Regístralo en **Biomasa → Triturado**, fracción "Escamas 2–3 mm".
+
 ## 7. Formulación de las píldoras
+
+> La fórmula del documento (150 g = 52.5 g biochar + 45 g harina + 22.5 g compost + 30 g pasta aglutinante) está cargada en la app como **"Fórmula base del documento"**. Al crear un lote en **Laboratorio → Lotes**, la app reescala los gramos y calcula el balance de masa. Revisa las inconsistencias en [revision-documento-problema.md](revision-documento-problema.md).
+>
+> Tamaño objetivo: **esferas de 2 a 3 cm** (canica grande), secadas a la sombra.
 
 ### 7.1 Tratamientos
 | Código | Arcilla | Compost | Ficus |

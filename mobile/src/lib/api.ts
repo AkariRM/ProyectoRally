@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import type {
   CatalogoEnsayos, Dispersion, EntregaPoda, Ensayo, Especie, EstadoSolicitud, InventarioBiomasa, Lote,
   Jornada, ProcesoBiomasa, PuntoAcopio, Rol, Seguimiento, Sesion, Solicitud, Stats, Usuario, ZonaPoda,
-  AreaReforestacion, Catalogos, ItemCatalogo, JornadaReforestacion, ParadaRuta, Prueba,
+  AreaReforestacion, Catalogos, Formula, Ingrediente, ItemCatalogo, JornadaReforestacion, ParadaRuta, Prueba,
 } from './types';
 
 // URL del backend:
@@ -77,13 +77,15 @@ export const RUTA_CATALOGO = {
   pruebas: '/pruebas',
   aditivos: '/aditivos',
   tiposMaterial: '/tipos-material',
+  ingredientes: '/ingredientes',
+  formulas: '/formulas',
 } as const;
 export type NombreCatalogo = keyof typeof RUTA_CATALOGO;
 
 export const api = {
   catalogos: () => get<Catalogos>('/catalogos'),
-  crearEnCatalogo: (c: NombreCatalogo, data: Partial<Prueba>) => post<ItemCatalogo>(RUTA_CATALOGO[c], data),
-  editarEnCatalogo: (c: NombreCatalogo, id: string, data: Partial<Prueba>) =>
+  crearEnCatalogo: (c: NombreCatalogo, data: Partial<Prueba & Ingrediente & Formula>) => post<ItemCatalogo>(RUTA_CATALOGO[c], data),
+  editarEnCatalogo: (c: NombreCatalogo, id: string, data: Partial<Prueba & Ingrediente & Formula>) =>
     put<ItemCatalogo>(`${RUTA_CATALOGO[c]}/${encodeURIComponent(id)}`, data),
   eliminarDeCatalogo: (c: NombreCatalogo, id: string) => del(`${RUTA_CATALOGO[c]}/${encodeURIComponent(id)}`),
 
