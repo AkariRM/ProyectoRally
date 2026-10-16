@@ -147,28 +147,24 @@ Los avisos son **notificaciones locales** (las programa el propio celular, no se
 
 Las jornadas se crean con **Generar jornadas** (según los días de poda de la zona, 4 semanas) o como **jornada puntual**. Los horarios de las zonas incluidas son **de ejemplo**: hay que pedir los reales a Servicios Públicos de Jiquilpan y Sahuayo.
 
-## Ensayos (sin sensores)
+## Ensayos
 
-Todo se mide con báscula de cocina (0.1 g), regla, vaso y cronómetro. Se comparan 3 tratamientos:
+Comparan las mezclas del documento:
+- Receta de 150 g.
+- Composición 55 / 30 / 15 %.
+- Matriz de arcilla con fibra de ficus.
 
-- **A** – arcilla
-- **B** – arcilla + compost
-- **C** – arcilla + compost + ficus
+Miden lo que el documento dice que hace la fibra de ficus:
 
-| Prueba | Cómo | Unidad |
+| Prueba | Qué comprueba | Unidad |
 |---|---|---|
-| Retención de agua | (peso mojado − seco) / seco × 100 | % |
-| Pérdida de agua 24 h | agua perdida en 24 h a la sombra / agua absorbida × 100 | % |
-| Germinación | germinadas / sembradas × 100 | % |
-| Grietas al secar | conteo visual | num |
-| Resistencia a caída | caídas desde 1 m sin romperse | num |
-| Desintegración en agua | minutos hasta deshacerse | min |
-| Tiempo de secado | horas hasta peso constante | h |
-| Protección térmica | temperatura afuera − adentro de la píldora al sol (termómetro de cocina) | °C |
+| Agrietamiento al secar | La fibra actúa como malla interna y evita que la esfera se agriete al sol | grietas |
+| Retención hídrica | La cutícula cerosa y el tejido fibroso atrapan la humedad (peso mojado vs. seco) | % |
+| Germinación | Semillas que germinaron dentro de las esferas | % |
 
-Los tratamientos y las pruebas se pueden editar desde **Inicio → Catálogos** (admin). Un cuarto tratamiento, **D – C + aditivo biológico** (micorrizas, bacterias fijadoras de N, lombricomposta…), evalúa los aditivos.
+**Especies (semilla al centro):** mezquite, huizache y agave silvestre, las especies nativas resistentes del documento.
 
----
+Tratamientos, pruebas y especies se pueden editar en **Inicio → Catálogos** (admin).
 
 ## Rol de cada carrera
 

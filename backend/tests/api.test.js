@@ -134,7 +134,7 @@ describe('API Bio Red', () => {
 
     await comoVol(request(app))
       .post('/api/ensayos')
-      .send({ tratamiento: 'C-arcilla+compost+ficus', prueba: 'retencionAgua', valor: 32 })
+      .send({ tratamiento: 'matriz-arcilla-ficus', prueba: 'retencionAgua', valor: 32 })
       .expect(201);
 
     const { body } = await comoVol(request(app)).get('/api/stats');
@@ -348,7 +348,7 @@ describe('API Bio Red', () => {
     const otro = (await request(app).post('/api/usuarios/registro').send({ email: 'otro@test.mx', password: 'secreta1' })).body.data;
 
     const area = (await como(brig)(request(app).post('/api/areas-reforestacion')
-      .send({ nombre: 'Ladera norte', lat: 19.98, lng: -102.73, especiesRecomendadas: ['pino-leiophylla', 'tepeguaje'] }))).body.data;
+      .send({ nombre: 'Ladera norte', lat: 19.98, lng: -102.73, especiesRecomendadas: ['mezquite', 'agave-silvestre'] }))).body.data;
 
     const fecha = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
     const jornada = (await como(brig)(request(app).post('/api/jornadas-reforestacion')
@@ -368,12 +368,12 @@ describe('API Bio Red', () => {
     await comoVol(request(app).get(`/api/jornadas-reforestacion/${jornada.id}/inscritos`)).expect(403);
 
     const cerrada = await como(brig)(request(app).put(`/api/jornadas-reforestacion/${jornada.id}/cerrar`)
-      .send({ estado: 'realizada', asistentes: [vol.usuario.id], pildorasDispersadas: 450, especieId: 'pino-leiophylla' }))
+      .send({ estado: 'realizada', asistentes: [vol.usuario.id], pildorasDispersadas: 450, especieId: 'agave-silvestre' }))
       .expect(200);
     expect(cerrada.body.data.dispersionId).toBeDefined();
 
     const disp = await comoVol(request(app)).get(`/api/dispersiones/${cerrada.body.data.dispersionId}`);
-    expect(disp.body.data).toMatchObject({ areaId: area.id, cantidad: 450, especieId: 'pino-leiophylla' });
+    expect(disp.body.data).toMatchObject({ areaId: area.id, cantidad: 450, especieId: 'agave-silvestre' });
 
     await comoVol(request(app)).post('/api/seguimientos')
       .send({ dispersionId: disp.body.data.id, germinadas: 90, vivas: 80, alturaPromedioCm: 6.5 })
@@ -398,16 +398,16 @@ describe('API Bio Red', () => {
     expect(inv.body.data.recibidaPorTipo).toEqual({ hojas: 4, 'ramas finas': 6 });
 
     const lote = await comoVol(request(app)).post('/api/lotes').send({
-      especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10,
+      especieId: 'huizache', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10,
       aditivos: ['micorrizas'], aditivosDetalle: '5 g de inóculo por kg de mezcla',
     }).expect(201);
     expect(lote.body.data.aditivos).toEqual(['micorrizas']);
     const malAditivo = await comoVol(request(app)).post('/api/lotes')
-      .send({ especieId: 'tepeguaje', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10, aditivos: ['magia'] });
+      .send({ especieId: 'huizache', ingredientes: ARCILLA_FICUS, pesoPildoraG: 10, aditivos: ['magia'] });
     expect(malAditivo.status).toBe(400);
 
     await comoVol(request(app)).post('/api/ensayos')
-      .send({ tratamiento: 'D-C+aditivo biológico', prueba: 'proteccionTermica', valor: 7.5 }).expect(201);
+      .send({ tratamiento: 'receta-150g', prueba: 'grietas', valor: 0 }).expect(201);
     const catalogos = await comoVol(request(app)).get('/api/catalogos');
     expect(catalogos.body.data.roles).toEqual(['admin', 'municipio', 'brigadista', 'voluntario']);
   });
