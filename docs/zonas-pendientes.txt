@@ -1,0 +1,44 @@
+ZONAS DE PODA PENDIENTES DE UBICAR — Bio Red
+=============================================
+
+Estas zonas se quitaron de la app porque no tienen su ubicación real
+(estaban en una coordenada provisional en el centro de Jiquilpan).
+Cuando se conozca su ubicación, agrégalas de nuevo.
+
+CÓMO AGREGARLAS
+1. Entra a la app como admin o municipio.
+2. Ve a Acopio → Zonas de poda → "+ Nueva zona".
+3. Estando en el lugar, toca "📍 Usar mi ubicación".
+4. Llena los datos de abajo y toca "Guardar zona".
+
+
+1) ANDADOR DEL JARDÍN DE LA PAZ
+   Municipio:        Jiquilpan
+   Tipo:             calle
+   Radio sugerido:   150 m
+   ¿Quién poda?:     Servicios Públicos Municipales (por confirmar)
+   Punto destino:    Plaza principal de Jiquilpan
+   Días y horario:   por confirmar con Servicios Públicos
+
+2) JARDÍN DE LA PAZ
+   Municipio:        Jiquilpan
+   Tipo:             plaza
+   Radio sugerido:   100 m
+   ¿Quién poda?:     Servicios Públicos Municipales (por confirmar)
+   Punto destino:    Plaza principal de Jiquilpan
+   Días y horario:   por confirmar con Servicios Públicos
+
+3) PARQUE LINEAL
+   Municipio:        Jiquilpan
+   Tipo:             parque
+   Radio sugerido:   300 m
+   ¿Quién poda?:     Servicios Públicos Municipales (por confirmar)
+   Punto destino:    Bosque Cuauhtémoc
+   Días y horario:   por confirmar con Servicios Públicos
+
+
+OTRAS ZONAS QUE SIGUEN EN LA APP CON UBICACIÓN POR CONFIRMAR
+(pin gris "?" en la versión publicada)
+- Bosque Cuauhtémoc (ubicación aproximada)
+- Escuelas de Jiquilpan (zona general; conviene una zona por escuela)
+- Centro de Sahuayo (ubicación aproximada)

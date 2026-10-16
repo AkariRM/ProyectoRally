@@ -90,37 +90,9 @@ module.exports = {
       horaFin: '12:00',
       notas: 'Ubicación aproximada y horario de ejemplo',
     },
-    // Zonas de Jiquilpan definidas por el equipo. Solo la Plaza de la Aguadora y la
-    // Unidad Deportiva tienen coordenadas de OpenStreetMap; las demás están en el
-    // centro de Jiquilpan hasta que un admin las corrija (editar zona → usar mi ubicación).
-    {
-      id: 'zona-andador-jardin-paz',
-      ubicacionConfirmada: false,
-      nombre: 'Andador del Jardín de la Paz',
-      municipio: 'Jiquilpan',
-      tipo: 'calle',
-      lat: 19.9902,
-      lng: -102.7192,
-      radioM: 150,
-      responsable: 'Servicios Públicos Municipales (por confirmar)',
-      puntoDestinoId: 'plaza-jiquilpan',
-      diasSemana: [],
-      notas: 'Ubicación y horario por confirmar',
-    },
-    {
-      id: 'zona-jardin-paz',
-      ubicacionConfirmada: false,
-      nombre: 'Jardín de la Paz',
-      municipio: 'Jiquilpan',
-      tipo: 'plaza',
-      lat: 19.9902,
-      lng: -102.7192,
-      radioM: 100,
-      responsable: 'Servicios Públicos Municipales (por confirmar)',
-      puntoDestinoId: 'plaza-jiquilpan',
-      diasSemana: [],
-      notas: 'Ubicación y horario por confirmar',
-    },
+    // Zonas de Jiquilpan definidas por el equipo. La Plaza de la Aguadora y la Unidad
+    // Deportiva tienen coordenadas de OpenStreetMap. Las zonas sin ubicación conocida
+    // están en docs/zonas-pendientes.txt.
     {
       id: 'zona-plaza-aguadora',
       ubicacionConfirmada: true,
@@ -148,20 +120,6 @@ module.exports = {
       puntoDestinoId: 'bosque-cuauhtemoc',
       diasSemana: [],
       notas: 'Horario por confirmar',
-    },
-    {
-      id: 'zona-parque-lineal',
-      ubicacionConfirmada: false,
-      nombre: 'Parque Lineal',
-      municipio: 'Jiquilpan',
-      tipo: 'parque',
-      lat: 19.9902,
-      lng: -102.7192,
-      radioM: 300,
-      responsable: 'Servicios Públicos Municipales (por confirmar)',
-      puntoDestinoId: 'bosque-cuauhtemoc',
-      diasSemana: [],
-      notas: 'Ubicación y horario por confirmar',
     },
     {
       id: 'zona-escuelas-jiquilpan',
