@@ -2,7 +2,7 @@ ZONAS DE PODA PENDIENTES DE UBICAR — Bio Red
 =============================================
 
 Estas zonas se quitaron de la app porque no tienen su ubicación real
-(estaban en una coordenada provisional en el centro de Jiquilpan).
+(estaban en una coordenada provisional o aproximada).
 Cuando se conozca su ubicación, agrégalas de nuevo.
 
 CÓMO AGREGARLAS
@@ -37,8 +37,36 @@ CÓMO AGREGARLAS
    Días y horario:   por confirmar con Servicios Públicos
 
 
-OTRAS ZONAS QUE SIGUEN EN LA APP CON UBICACIÓN POR CONFIRMAR
-(pin gris "?" en la versión publicada)
-- Bosque Cuauhtémoc (ubicación aproximada)
-- Escuelas de Jiquilpan (zona general; conviene una zona por escuela)
-- Centro de Sahuayo (ubicación aproximada)
+4) BOSQUE CUAUHTÉMOC
+   Municipio:        Jiquilpan
+   Tipo:             parque
+   Radio sugerido:   250 m
+   ¿Quién poda?:     Servicios Públicos Municipales (por confirmar)
+   Punto destino:    Bosque Cuauhtémoc
+   Días y horario:   por confirmar con Servicios Públicos
+                     (en la app tenía martes y jueves de 8:00 a 12:00, solo de ejemplo)
+
+5) ESCUELAS DE JIQUILPAN
+   Municipio:        Jiquilpan
+   Tipo:             escuela
+   Radio sugerido:   según cada escuela
+   ¿Quién poda?:     cada escuela (por confirmar)
+   Punto destino:    Plaza principal de Jiquilpan
+   Días y horario:   por confirmar con cada escuela
+   Nota:             conviene crear una zona por cada escuela participante,
+                     no una sola zona general
+
+6) CENTRO DE SAHUAYO
+   Municipio:        Sahuayo
+   Tipo:             plaza
+   Radio sugerido:   300 m
+   ¿Quién poda?:     Servicios Públicos Municipales (por confirmar)
+   Punto destino:    Plaza principal de Sahuayo
+   Días y horario:   por confirmar con Servicios Públicos
+                     (en la app tenía miércoles de 7:00 a 11:00, solo de ejemplo)
+
+
+ZONAS QUE SIGUEN EN LA APP (ubicación de OpenStreetMap)
+- Plaza de la Aguadora (Jiquilpan)
+- Unidad Deportiva Lázaro Cárdenas (Jiquilpan)
+Ninguna tiene días ni horario de poda todavía.

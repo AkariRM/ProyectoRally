@@ -72,27 +72,9 @@ module.exports = {
   ],
 
   // Zonas donde se poda Ficus benjamina. diasSemana: 0 = domingo … 6 = sábado.
-  // OJO: los horarios son DE EJEMPLO; reemplazarlos con los de Servicios Públicos.
+  // Coordenadas de OpenStreetMap; los horarios están por confirmar con Servicios Públicos.
+  // Las zonas sin ubicación conocida están en docs/zonas-pendientes.txt.
   zonasPoda: [
-    {
-      id: 'zona-bosque-cuauhtemoc',
-      ubicacionConfirmada: false,
-      nombre: 'Bosque Cuauhtémoc',
-      municipio: 'Jiquilpan',
-      tipo: 'parque',
-      lat: 19.9945,
-      lng: -102.7135,
-      radioM: 250,
-      responsable: 'Servicios Públicos Municipales (por confirmar)',
-      puntoDestinoId: 'bosque-cuauhtemoc',
-      diasSemana: [2, 4],
-      horaInicio: '08:00',
-      horaFin: '12:00',
-      notas: 'Ubicación aproximada y horario de ejemplo',
-    },
-    // Zonas de Jiquilpan definidas por el equipo. La Plaza de la Aguadora y la Unidad
-    // Deportiva tienen coordenadas de OpenStreetMap. Las zonas sin ubicación conocida
-    // están en docs/zonas-pendientes.txt.
     {
       id: 'zona-plaza-aguadora',
       ubicacionConfirmada: true,
@@ -120,36 +102,6 @@ module.exports = {
       puntoDestinoId: 'bosque-cuauhtemoc',
       diasSemana: [],
       notas: 'Horario por confirmar',
-    },
-    {
-      id: 'zona-escuelas-jiquilpan',
-      ubicacionConfirmada: false,
-      nombre: 'Escuelas de Jiquilpan',
-      municipio: 'Jiquilpan',
-      tipo: 'escuela',
-      lat: 19.9902,
-      lng: -102.7192,
-      radioM: 500,
-      responsable: 'Cada escuela (por confirmar)',
-      puntoDestinoId: 'plaza-jiquilpan',
-      diasSemana: [],
-      notas: 'Zona general: conviene crear una zona por cada escuela participante',
-    },
-    {
-      id: 'zona-centro-sahuayo',
-      ubicacionConfirmada: false,
-      nombre: 'Centro de Sahuayo',
-      municipio: 'Sahuayo',
-      tipo: 'plaza',
-      lat: 20.0577,
-      lng: -102.724,
-      radioM: 300,
-      responsable: 'Servicios Públicos Municipales (por confirmar)',
-      puntoDestinoId: 'plaza-sahuayo',
-      diasSemana: [3],
-      horaInicio: '07:00',
-      horaFin: '11:00',
-      notas: 'Horario de ejemplo',
     },
   ],
 

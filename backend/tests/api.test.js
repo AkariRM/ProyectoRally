@@ -219,18 +219,26 @@ describe('API Bio Red', () => {
     const zonas = await comoVol(request(app)).get('/api/zonas-poda');
     expect(zonas.body.data.length).toBeGreaterThan(0);
 
-    // Bosque Cuauhtémoc poda martes y jueves → 2 jornadas por semana
-    const gen = await comoAdmin(request(app)).post('/api/zonas-poda/zona-bosque-cuauhtemoc/generar-jornadas').send({ semanas: 2 }).expect(201);
+    // Zona que poda martes y jueves → 2 jornadas por semana
+    const zona = await comoAdmin(request(app))
+      .post('/api/zonas-poda')
+      .send({
+        nombre: 'Zona de prueba', municipio: 'Jiquilpan', tipo: 'parque', lat: 19.99, lng: -102.71, radioM: 100,
+        puntoDestinoId: 'bosque-cuauhtemoc', diasSemana: [2, 4], horaInicio: '08:00', horaFin: '12:00',
+      })
+      .expect(201);
+    const zonaId = zona.body.data.id;
+    const gen = await comoAdmin(request(app)).post(`/api/zonas-poda/${zonaId}/generar-jornadas`).send({ semanas: 2 }).expect(201);
     expect(gen.body.data).toHaveLength(4);
     expect(gen.body.data[0]).toMatchObject({ horaInicio: '08:00', puntoDestinoId: 'bosque-cuauhtemoc', estado: 'programada' });
 
     // Generar otra vez no duplica
-    const otra = await comoAdmin(request(app)).post('/api/zonas-poda/zona-bosque-cuauhtemoc/generar-jornadas').send({ semanas: 2 });
+    const otra = await comoAdmin(request(app)).post(`/api/zonas-poda/${zonaId}/generar-jornadas`).send({ semanas: 2 });
     expect(otra.body.data).toHaveLength(0);
 
     const proximas = await comoVol(request(app)).get('/api/jornadas/proximas');
     expect(proximas.body.data).toHaveLength(4);
-    expect(proximas.body.data[0].zona.nombre).toBe('Bosque Cuauhtémoc');
+    expect(proximas.body.data[0].zona.nombre).toBe('Zona de prueba');
 
     const jornadaId = proximas.body.data[0].id;
     const apuntada = await comoVol(request(app)).post(`/api/jornadas/${jornadaId}/apuntarme`).send({}).expect(200);
@@ -251,7 +259,7 @@ describe('API Bio Red', () => {
   test('valida formato de fecha y hora de jornadas', async () => {
     const res = await comoAdmin(request(app))
       .post('/api/jornadas')
-      .send({ zonaId: 'zona-centro-sahuayo', fecha: '16/10/2026', horaInicio: '7am' });
+      .send({ zonaId: 'zona-plaza-aguadora', fecha: '16/10/2026', horaInicio: '7am' });
     expect(res.status).toBe(400);
     expect(res.body.errores).toHaveLength(2);
   });
@@ -302,7 +310,7 @@ describe('API Bio Red', () => {
     expect(bloqueado.status).toBe(409);
 
     // Generar jornadas es de admin
-    await comoVol(request(app).post('/api/zonas-poda/zona-centro-sahuayo/generar-jornadas').send({})).expect(403);
+    await comoVol(request(app).post('/api/zonas-poda/zona-plaza-aguadora/generar-jornadas').send({})).expect(403);
   });
 
   test('admin cambia roles de usuarios', async () => {
