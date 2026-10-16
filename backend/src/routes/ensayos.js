@@ -1,30 +1,29 @@
 const express = require('express');
+const db = require('../lib/db');
 const { crudRouter } = require('../lib/crud');
 
 // Mediciones de laboratorio capturadas a mano (sin sensores) para comparar mezclas.
-const TRATAMIENTOS = ['A-arcilla', 'B-arcilla+compost', 'C-arcilla+compost+ficus', 'otro'];
-const PRUEBAS = {
-  retencionAgua: '%', // por peso: (húmeda - seca) / seca × 100
-  perdidaAgua24h: '%', // % del agua absorbida que se perdió en 24 h a la sombra
-  germinacion: '%',
-  grietas: 'num', // grietas visibles por píldora al secar
-  caida: 'num', // caídas desde 1 m que resiste sin romperse
-  desintegracion: 'min', // minutos en agua hasta deshacerse
-  secado: 'h', // horas hasta peso constante
-};
+// Tratamientos y pruebas son catálogos editables (/api/tratamientos, /api/pruebas).
 
 const router = express.Router();
 
+// Formato compacto que usaba la app: { tratamientos: [ids], pruebas: { id: unidad } }
 router.get('/catalogo', (req, res) => {
-  res.json({ success: true, data: { tratamientos: TRATAMIENTOS, pruebas: PRUEBAS } });
+  res.json({
+    success: true,
+    data: {
+      tratamientos: db.list('tratamientos').map(t => t.id),
+      pruebas: Object.fromEntries(db.list('pruebas').map(p => [p.id, p.unidad])),
+    },
+  });
 });
 
 router.use(
   crudRouter(
     'ensayos',
     {
-      tratamiento: { type: 'enum', required: true, values: TRATAMIENTOS },
-      prueba: { type: 'enum', required: true, values: Object.keys(PRUEBAS) },
+      tratamiento: { type: 'string', required: true, ref: 'tratamientos' },
+      prueba: { type: 'string', required: true, ref: 'pruebas' },
       valor: { type: 'number', required: true },
       unidad: { type: 'string' },
       repeticion: { type: 'number', min: 1 },
@@ -33,7 +32,7 @@ router.use(
       notas: { type: 'string' },
     },
     {
-      beforeCreate: data => ({ ...data, unidad: PRUEBAS[data.prueba] }),
+      beforeCreate: data => ({ ...data, unidad: db.get('pruebas', data.prueba).unidad }),
     },
   ),
 );

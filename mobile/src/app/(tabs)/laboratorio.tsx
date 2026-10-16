@@ -2,31 +2,12 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/lib/api';
 import { useData } from '@/lib/useData';
+import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import { useUsuario } from '@/lib/usuario';
-import { Aviso, Boton, Campo, colores, fecha, Opciones, Pantalla, Seccion, Tarjeta } from '@/components/ui';
+import { Aviso, Boton, Campo, colores, fecha, Opciones, Pantalla, Seccion, Tarjeta, OpcionesMultiples } from '@/components/ui';
 import { alerta } from '@/lib/alerta';
 
 type Vista = 'lotes' | 'ensayos';
-
-const NOMBRES_PRUEBA: Record<string, string> = {
-  retencionAgua: 'Retención de agua',
-  perdidaAgua24h: 'Pérdida de agua 24 h',
-  germinacion: 'Germinación',
-  grietas: 'Grietas al secar',
-  caida: 'Resistencia a caída',
-  desintegracion: 'Desintegración en agua',
-  secado: 'Tiempo de secado',
-};
-
-const INSTRUCCIONES: Record<string, string> = {
-  retencionAgua: 'Pesa la píldora seca, sumérgela 10 min, escúrrela 1 min y vuelve a pesar.',
-  perdidaAgua24h: 'Pesa la píldora seca, luego mojada, y otra vez tras 24 h a la sombra.',
-  germinacion: 'Siembra las píldoras en charola y cuenta cuántas semillas germinaron a los 15 días.',
-  grietas: 'Cuenta las grietas visibles en la píldora ya seca.',
-  caida: 'Deja caer la píldora desde 1 m sobre piso duro; anota cuántas caídas resiste sin romperse.',
-  desintegracion: 'Pon la píldora en un vaso con agua y mide los minutos hasta que se deshace.',
-  secado: 'Pesa cada 12 h; anota las horas hasta que el peso ya no cambia.',
-};
 
 // Pruebas que se calculan a partir de pesadas o conteos
 function calcular(prueba: string, v: Record<string, string>): number | null {
@@ -44,6 +25,7 @@ function calcular(prueba: string, v: Record<string, string>): number | null {
   return null;
 }
 
+// Pruebas con calculadora integrada (las demás se capturan como valor directo)
 const CALCULADAS = ['retencionAgua', 'perdidaAgua24h', 'germinacion'];
 
 function Lotes() {
@@ -59,6 +41,9 @@ function Lotes() {
   const [ficus, setFicus] = useState('20');
   const [diametro, setDiametro] = useState('');
   const [pesoPildora, setPesoPildora] = useState('20');
+  const [aditivos, setAditivos] = useState<string[]>([]);
+  const { data: catalogos } = useCatalogos();
+  const [aditivosDetalle, setAditivosDetalle] = useState('');
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -83,6 +68,8 @@ function Lotes() {
         ficusPct: Number(ficus),
         diametroMm: diametro ? Number(diametro) : undefined,
         pesoPildoraG: Number(pesoPildora) || undefined,
+        aditivos,
+        aditivosDetalle: aditivosDetalle || undefined,
         notas,
         usuarioId: usuario?.id,
       });
@@ -128,6 +115,16 @@ function Lotes() {
           texto={`Necesitas ${kgFicus.toFixed(2)} kg de ficus triturado · hay ${trituradaDisponible} kg en inventario`}
         />
       ) : null}
+      <OpcionesMultiples
+        etiqueta="Aditivos biológicos (opcional)"
+        opciones={(catalogos?.aditivos ?? []).map(a => a.id)}
+        nombres={nombresDe(catalogos?.aditivos)}
+        valores={aditivos}
+        onChange={setAditivos}
+      />
+      {aditivos.length ? (
+        <Campo etiqueta="Detalle de aditivos" value={aditivosDetalle} onChangeText={setAditivosDetalle} placeholder="Ej: 5 g de inóculo de micorrizas por kg de mezcla" />
+      ) : null}
       <Campo etiqueta="Diámetro (mm, opcional)" value={diametro} onChangeText={setDiametro} keyboardType="decimal-pad" placeholder="Ej: 25" />
       <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline placeholder="Ej: ficus triturado en licuadora, fibra corta" />
       <Boton texto="Crear lote" color={colores.azul} onPress={enviar} cargando={enviando} />
@@ -138,7 +135,7 @@ function Lotes() {
           <Text style={styles.nombre}>{l.codigo} · {nombreEspecie[l.especieId] ?? l.especieId}</Text>
           <Text style={styles.detalle}>
             {l.cantidad} píldoras · arcilla {l.arcillaPct}% · compost {l.compostPct}% · ficus {l.ficusPct}%
-            {l.kgFicus !== undefined ? ` · ${l.kgFicus} kg ficus` : ''} · {fecha(l.creadoEn)}
+            {l.kgFicus !== undefined ? ` · ${l.kgFicus} kg ficus` : ''}{l.aditivos?.length ? ` · + ${l.aditivos.map(a => nombresDe(catalogos?.aditivos)[a] ?? a).join(', ')}` : ''} · {fecha(l.creadoEn)}
           </Text>
         </Tarjeta>
       ))}
@@ -149,8 +146,8 @@ function Lotes() {
 function Ensayos() {
   const { usuario } = useUsuario();
   const { data, error, recargar } = useData(async () => {
-    const [catalogo, stats] = await Promise.all([api.catalogoEnsayos(), api.stats()]);
-    return { catalogo, stats };
+    const [catalogos, stats] = await Promise.all([api.catalogos(), api.stats()]);
+    return { catalogos, stats };
   });
   const [tratamiento, setTratamiento] = useState<string | null>(null);
   const [prueba, setPrueba] = useState<string | null>(null);
@@ -160,10 +157,13 @@ function Ensayos() {
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
 
-  const tratamientos = data?.catalogo.tratamientos ?? [];
-  const pruebas = Object.keys(data?.catalogo.pruebas ?? {});
-  const unidad = prueba ? data?.catalogo.pruebas[prueba] : '';
-  const esCalculada = prueba ? CALCULADAS.includes(prueba) : false;
+  const tratamientos = data?.catalogos.tratamientos ?? [];
+  const pruebas = data?.catalogos.pruebas ?? [];
+  const nombreTratamiento = nombresDe(tratamientos);
+  const nombrePrueba = nombresDe(pruebas);
+  const pruebaSel = pruebas.find(p => p.id === prueba);
+  const unidad = pruebaSel?.unidad ?? '';
+  const esCalculada = !!prueba && CALCULADAS.includes(prueba);
   const calculado = prueba && esCalculada ? calcular(prueba, valores) : null;
   const set = (k: string) => (t: string) => setValores(v => ({ ...v, [k]: t }));
 
@@ -203,9 +203,12 @@ function Ensayos() {
       <Aviso tipo="info" texto="Se mide con báscula de cocina (0.1 g), regla, vaso y cronómetro. No se necesitan sensores." />
 
       <Seccion>Registrar medición</Seccion>
-      <Opciones etiqueta="Tratamiento (mezcla)" opciones={tratamientos} valor={tratamiento} onChange={setTratamiento} />
-      <Opciones etiqueta="Prueba" opciones={pruebas} nombres={NOMBRES_PRUEBA} valor={prueba} onChange={p => { setPrueba(p); setValores({}); }} />
-      {prueba ? <Aviso tipo="ok" texto={INSTRUCCIONES[prueba] ?? ''} /> : null}
+      <Opciones etiqueta="Tratamiento (mezcla)" opciones={tratamientos.map(t => t.id)} nombres={nombreTratamiento} valor={tratamiento} onChange={setTratamiento} />
+      {tratamiento && tratamientos.find(t => t.id === tratamiento)?.descripcion ? (
+        <Text style={styles.ayudaTratamiento}>{tratamientos.find(t => t.id === tratamiento)?.descripcion}</Text>
+      ) : null}
+      <Opciones etiqueta="Prueba" opciones={pruebas.map(p => p.id)} nombres={nombrePrueba} valor={prueba} onChange={p => { setPrueba(p); setValores({}); }} />
+      {pruebaSel?.instrucciones ? <Aviso tipo="ok" texto={pruebaSel.instrucciones} /> : null}
 
       {prueba === 'retencionAgua' || prueba === 'perdidaAgua24h' ? (
         <>
@@ -236,10 +239,10 @@ function Ensayos() {
       {pruebasConDatos.length ? <Seccion>Comparación de mezclas (promedios)</Seccion> : null}
       {pruebasConDatos.map(p => (
         <Tarjeta key={p}>
-          <Text style={styles.nombre}>{NOMBRES_PRUEBA[p] ?? p}</Text>
+          <Text style={styles.nombre}>{nombrePrueba[p] ?? p}</Text>
           {resumen.filter(r => r.prueba === p).map(r => (
             <View key={r.tratamiento} style={styles.filaTabla}>
-              <Text style={styles.detalle}>{r.tratamiento}</Text>
+              <Text style={styles.detalle}>{nombreTratamiento[r.tratamiento] ?? r.tratamiento}</Text>
               <Text style={styles.valorTabla}>{r.promedio} {r.unidad} <Text style={styles.detalle}>(n={r.n})</Text></Text>
             </View>
           ))}
@@ -265,6 +268,7 @@ const styles = StyleSheet.create({
   suma: { fontSize: 13, fontWeight: '700', marginTop: -6, marginBottom: 12 },
   nombre: { fontSize: 15, fontWeight: '600', color: colores.texto, marginBottom: 4 },
   detalle: { fontSize: 12, color: colores.textoSuave },
+  ayudaTratamiento: { fontSize: 12, color: colores.textoSuave, marginTop: -8, marginBottom: 12 },
   resultado: { fontSize: 16, fontWeight: '700', color: colores.azul, marginBottom: 14 },
   filaTabla: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   valorTabla: { fontSize: 14, fontWeight: '700', color: colores.texto },

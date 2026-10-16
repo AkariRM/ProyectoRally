@@ -7,6 +7,9 @@
 // Las coordenadas de los puntos de acopio son aproximadas.
 
 module.exports = {
+  // Tratamientos, pruebas, aditivos y tipos de material (editables por admin)
+  ...require('./catalogosIniciales'),
+
   usuarios: [],
 
   especies: [
@@ -63,6 +66,57 @@ module.exports = {
       temporadaSiembra: 'Junio–julio (inicio de lluvias)',
       tratamientoPregerminativo: 'Escarificación ligera',
       validada: false,
+    },
+    // Especies para laderas quemadas (encino-pino y leguminosas arbóreas)
+    {
+      id: 'encino-castanea',
+      nombreComun: 'Encino',
+      nombreCientifico: 'Quercus castanea',
+      tipo: 'árbol',
+      temporadaSiembra: 'Junio–julio (inicio de lluvias)',
+      tratamientoPregerminativo: 'Ninguno; sembrar la bellota fresca (no dejar que se seque)',
+      validada: false,
+      notas: 'Bellota grande: requiere píldora más grande (≥ 40 mm) o siembra directa',
+    },
+    {
+      id: 'encino-rugosa',
+      nombreComun: 'Encino quiebra hacha',
+      nombreCientifico: 'Quercus rugosa',
+      tipo: 'árbol',
+      temporadaSiembra: 'Junio–julio (inicio de lluvias)',
+      tratamientoPregerminativo: 'Ninguno; sembrar la bellota fresca',
+      validada: false,
+      notas: 'Bellota grande: píldora más grande o siembra directa',
+    },
+    {
+      id: 'pino-devoniana',
+      nombreComun: 'Pino lacio / pino michoacano',
+      nombreCientifico: 'Pinus devoniana',
+      tipo: 'árbol',
+      temporadaSiembra: 'Junio–julio (inicio de lluvias)',
+      tratamientoPregerminativo: 'Remojo 24 h',
+      validada: false,
+      notas: 'Para laderas altas; tolera fuego en etapa de pasto',
+    },
+    {
+      id: 'pino-leiophylla',
+      nombreComun: 'Pino chino',
+      nombreCientifico: 'Pinus leiophylla',
+      tipo: 'árbol',
+      temporadaSiembra: 'Junio–julio (inicio de lluvias)',
+      tratamientoPregerminativo: 'Remojo 24 h',
+      validada: false,
+      notas: 'Rebrota después de incendios; buena para áreas quemadas',
+    },
+    {
+      id: 'tepeguaje',
+      nombreComun: 'Tepeguaje',
+      nombreCientifico: 'Lysiloma acapulcense',
+      tipo: 'árbol (leguminosa)',
+      temporadaSiembra: 'Junio–julio (inicio de lluvias)',
+      tratamientoPregerminativo: 'Escarificación o agua caliente',
+      validada: false,
+      notas: 'Fija nitrógeno; ayuda a recuperar suelos degradados',
     },
   ],
 
@@ -223,6 +277,12 @@ module.exports = {
 
   // Solicitudes de recolección de poda a domicilio
   solicitudes: [],
+
+  // Áreas a reforestar (laderas quemadas o degradadas), definidas por Arquitectura
+  areasReforestacion: [],
+
+  // Jornadas de reforestación masiva en un área
+  jornadasReforestacion: [],
 
   // Lotes de producción de píldoras
   lotes: [],

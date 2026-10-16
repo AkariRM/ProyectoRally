@@ -1,7 +1,7 @@
 {
   "name": "pildoras-bioticas-backend",
   "version": "2.0.0",
-  "description": "API REST para el proyecto Píldoras Bióticas con Ficus benjamina",
+  "description": "API REST de Bio Red: píldoras bióticas con poda urbana",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

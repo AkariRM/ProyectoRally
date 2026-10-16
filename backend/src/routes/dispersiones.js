@@ -8,6 +8,7 @@ module.exports = crudRouter(
     lat: { type: 'number', required: true, min: -90, max: 90 },
     lng: { type: 'number', required: true, min: -180, max: 180 },
     zona: { type: 'string', required: true },
+    areaId: { type: 'string', ref: 'areasReforestacion' },
     municipio: { type: 'enum', values: ['Jiquilpan', 'Sahuayo', 'Otro'] },
     loteId: { type: 'string', ref: 'lotes' },
     especieId: { type: 'string', ref: 'especies' },

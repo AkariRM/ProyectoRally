@@ -20,15 +20,17 @@ function Navegacion() {
   }
 
   return (
-    <Stack screenOptions={{ headerTintColor: colores.verde }}>
+    // Sin encabezado nativo: cada pantalla trae su propio botón "‹ Atrás"
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!usuario}>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="login" />
       </Stack.Protected>
       <Stack.Protected guard={!!usuario} redirectTo="/login">
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="seguimiento/[id]" options={{ title: 'Seguimiento' }} />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="seguimiento/[id]" />
         <Stack.Protected guard={esAdmin} redirectTo="/">
-          <Stack.Screen name="admin" options={{ title: 'Administración' }} />
+          <Stack.Screen name="admin" />
+          <Stack.Screen name="catalogos" />
         </Stack.Protected>
       </Stack.Protected>
     </Stack>

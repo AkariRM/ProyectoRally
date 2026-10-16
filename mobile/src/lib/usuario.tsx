@@ -1,13 +1,14 @@
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, setToken } from './api';
-import type { Sesion, Usuario } from './types';
+import type { Rol, Sesion, Usuario } from './types';
 
 const KEY = 'sesion';
 
 interface UsuarioState {
   usuario: Usuario | null;
   esAdmin: boolean;
+  puede: (...roles: Rol[]) => boolean; // admin siempre puede
   cargando: boolean; // recuperando la sesión guardada al abrir la app
   iniciar: (s: Sesion) => Promise<void>;
   salir: () => Promise<void>;
@@ -56,7 +57,14 @@ export function UsuarioProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UsuarioContext.Provider value={{ usuario, esAdmin: usuario?.rol === 'admin', cargando, iniciar, salir }}>
+    <UsuarioContext.Provider value={{
+      usuario,
+      esAdmin: usuario?.rol === 'admin',
+      puede: (...roles: Rol[]) => !!usuario && (usuario.rol === 'admin' || roles.includes(usuario.rol)),
+      cargando,
+      iniciar,
+      salir,
+    }}>
       {children}
     </UsuarioContext.Provider>
   );

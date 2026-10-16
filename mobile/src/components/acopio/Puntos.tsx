@@ -5,7 +5,8 @@ import { alerta, confirmar } from '@/lib/alerta';
 import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
-import type { Municipio, PuntoAcopio } from '@/lib/types';
+import type { Municipio, PuntoAcopio, TipoMaterial } from '@/lib/types';
+import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
 import { Aviso, Boton, BotonChico, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
 
@@ -79,6 +80,9 @@ export default function Puntos() {
 
   const [puntoId, setPuntoId] = useState<string | null>(null);
   const [kg, setKg] = useState('');
+  const [tipoMaterial, setTipoMaterial] = useState<TipoMaterial | null>(null);
+  const { data: catalogos } = useCatalogos();
+  const [especieArbol, setEspecieArbol] = useState('');
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [editando, setEditando] = useState<string | 'nuevo' | null>(null);
@@ -101,7 +105,9 @@ export default function Puntos() {
     if (!puntoId) return alerta('Falta dato', 'Elige un punto de acopio');
     setEnviando(true);
     try {
-      await api.crearEntregaPoda({ puntoId, kg: Number(kg), notas });
+      await api.crearEntregaPoda({
+        puntoId, kg: Number(kg), notas, tipoMaterial: tipoMaterial ?? undefined, especieArbol: especieArbol || undefined,
+      });
       setKg('');
       setNotas('');
       alerta('¡Gracias!', 'Entrega de poda registrada.');
@@ -168,6 +174,14 @@ export default function Puntos() {
         valor={puntoId}
         onChange={setPuntoId}
       />
+      <Opciones
+        etiqueta="Tipo de material"
+        opciones={(catalogos?.tiposMaterial ?? []).map(t => t.id)}
+        nombres={nombresDe(catalogos?.tiposMaterial)}
+        valor={tipoMaterial}
+        onChange={setTipoMaterial}
+      />
+      <Campo etiqueta="Árbol (opcional)" value={especieArbol} onChangeText={setEspecieArbol} placeholder="Ej: Ficus benjamina, fresno, jacaranda" />
       <Campo etiqueta="Kilogramos (fresca)" value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder="Ej: 5.5" ayuda="Pesa la bolsa o costal antes de entregarlo" />
       <Campo etiqueta="Notas (opcional)" value={notas} onChangeText={setNotas} multiline placeholder="Ej: hojas y ramas delgadas, poda de la plaza" />
       <Boton texto="Registrar entrega" color={colores.tierra} onPress={enviar} cargando={enviando} />
@@ -175,7 +189,7 @@ export default function Puntos() {
       {entregas.length ? <Seccion>Últimas entregas</Seccion> : null}
       {[...entregas].reverse().slice(0, 10).map(e => (
         <Tarjeta key={e.id}>
-          <Text style={styles.nombre}>{e.kg} kg · {nombrePunto[e.puntoId] ?? e.puntoId}</Text>
+          <Text style={styles.nombre}>{e.kg} kg · {nombrePunto[e.puntoId] ?? e.puntoId}{e.tipoMaterial ? ` · ${e.tipoMaterial}` : ''}</Text>
           <Text style={styles.detalle}>{fecha(e.creadoEn)}{e.notas ? ` · ${e.notas}` : ''}</Text>
         </Tarjeta>
       ))}

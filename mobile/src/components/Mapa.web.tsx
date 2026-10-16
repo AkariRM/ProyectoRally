@@ -25,7 +25,11 @@ function html(puntos: PuntoMapa[], zonas: ZonaMapa[]) {
       color: COLORES[p.color ?? ''] ?? p.color ?? COLORES.orange,
       popup: `<b>${escapar(p.titulo)}</b>${p.descripcion ? `<br>${escapar(p.descripcion)}` : ''}`,
     })),
-    zonas: zonas.map(z => ({ lat: z.lat, lng: z.lng, radio: z.radioM, activa: !!z.activa })),
+    zonas: zonas.map(z => ({
+      lat: z.lat, lng: z.lng, radio: z.radioM,
+      color: z.color ?? (z.activa ? '#2E7D32' : '#8D6E63'),
+      popup: z.titulo ? `<b>${escapar(z.titulo)}</b>` : null,
+    })),
   };
   // JSON dentro de <script>: se evita que un "</script>" en los datos cierre la etiqueta
   const json = JSON.stringify(datos).replace(/</g, '\\u003c');
@@ -43,8 +47,9 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(mapa);
 var capas = [];
 d.zonas.forEach(function (z) {
-  var c = z.activa ? '#2E7D32' : '#8D6E63';
-  capas.push(L.circle([z.lat, z.lng], { radius: z.radio, color: c, fillColor: c, fillOpacity: 0.2, weight: 2 }).addTo(mapa));
+  var c = L.circle([z.lat, z.lng], { radius: z.radio, color: z.color, fillColor: z.color, fillOpacity: 0.2, weight: 2 }).addTo(mapa);
+  if (z.popup) c.bindPopup(z.popup);
+  capas.push(c);
 });
 d.puntos.forEach(function (p) {
   capas.push(L.circleMarker([p.lat, p.lng], { radius: 9, color: '#fff', weight: 2, fillColor: p.color, fillOpacity: 1 })

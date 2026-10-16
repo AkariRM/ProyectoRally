@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { api, BASE_URL } from '@/lib/api';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
+import { NOMBRE_ROL } from '@/lib/catalogos';
 import { Aviso, Boton, colores, Dato, Fila, Pantalla, Seccion, Tarjeta } from '@/components/ui';
 
 const PASOS = [
@@ -18,14 +19,14 @@ export default function Inicio() {
   const { data: stats, error } = useData(api.stats);
 
   return (
-    <Pantalla titulo="Avance del proyecto 🌱" subtitulo="Reforestación con poda de Ficus benjamina · Jiquilpan y Sahuayo">
+    <Pantalla sinAtras titulo="Avance del proyecto 🌱" subtitulo="Reforestación con poda de Ficus benjamina · Jiquilpan y Sahuayo">
       {error ? <Aviso texto={`${error}\nServidor: ${BASE_URL}`} /> : null}
 
       {usuario ? (
         <Tarjeta style={styles.saludo}>
           <View style={{ flex: 1 }}>
             <Text style={styles.saludoTexto}>Hola, {usuario.email.split('@')[0]}</Text>
-            <Text style={styles.saludoCarrera}>{esAdmin ? '⭐ Administrador' : 'Voluntario'} · {usuario.email}</Text>
+            <Text style={styles.saludoCarrera}>{NOMBRE_ROL[usuario.rol] ?? usuario.rol} · {usuario.email}</Text>
           </View>
           <TouchableOpacity onPress={salir}>
             <Text style={{ color: colores.textoSuave }}>Salir</Text>
@@ -33,7 +34,10 @@ export default function Inicio() {
         </Tarjeta>
       ) : null}
       {esAdmin ? (
-        <Boton texto="⚙️  Administrar usuarios" color={colores.texto} secundario onPress={() => router.push('/admin')} />
+        <>
+          <Boton texto="⚙️  Administrar usuarios" color={colores.texto} secundario onPress={() => router.push('/admin')} />
+          <Boton texto="📚  Catálogos (especies, tratamientos, pruebas…)" color={colores.texto} secundario onPress={() => router.push('/catalogos')} />
+        </>
       ) : null}
 
       <Seccion>Biomasa y producción</Seccion>
@@ -54,7 +58,7 @@ export default function Inicio() {
 
       <Seccion>¿Qué quieres hacer?</Seccion>
       <Boton texto="✂️  Ver jornadas de poda y recolectar" color={colores.tierra} onPress={() => router.navigate('/acopio')} />
-      <Boton texto="🌱  Registrar dispersión" onPress={() => router.navigate('/dispersar')} />
+      <Boton texto="🌱  Reforestación: áreas, jornadas y dispersiones" onPress={() => router.navigate('/reforestar')} />
       <Boton texto="🧪  Registrar lote o ensayo" color={colores.azul} onPress={() => router.navigate('/laboratorio')} />
 
       <Seccion>¿Cómo funciona?</Seccion>

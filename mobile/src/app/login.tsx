@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { api, BASE_URL } from '@/lib/api';
@@ -42,9 +42,13 @@ export default function Login() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
           <View style={styles.encabezado}>
-            <Text style={styles.logo}>🌱</Text>
-            <Text style={styles.titulo}>Píldoras Bióticas</Text>
-            <Text style={styles.subtitulo}>Reforestación con poda de Ficus benjamina{'\n'}Jiquilpan y Sahuayo</Text>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+              accessibilityLabel="Bio Red"
+            />
+            <Text style={styles.subtitulo}>Píldoras bióticas con poda urbana{'\n'}Reforestación de Jiquilpan y Sahuayo</Text>
           </View>
 
           <View style={styles.tarjeta}>
@@ -95,11 +99,10 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: colores.verdeClaro },
+  pantalla: { flex: 1, backgroundColor: '#FFFFFF' },
   contenido: { flexGrow: 1, justifyContent: 'center', padding: 20, maxWidth: 480, width: '100%', alignSelf: 'center' },
   encabezado: { alignItems: 'center', marginBottom: 24 },
-  logo: { fontSize: 56 },
-  titulo: { fontSize: 28, fontWeight: 'bold', color: colores.verde, marginTop: 8 },
+  logo: { width: 180, height: 265 },
   subtitulo: { fontSize: 14, color: colores.textoSuave, textAlign: 'center', marginTop: 6, lineHeight: 20 },
   tarjeta: { backgroundColor: '#fff', borderRadius: 16, padding: 20, elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
   tarjetaTitulo: { fontSize: 20, fontWeight: '700', color: colores.texto, marginBottom: 16 },

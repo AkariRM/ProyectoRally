@@ -1,5 +1,6 @@
 export type Municipio = 'Jiquilpan' | 'Sahuayo' | 'Otro';
-export type Rol = 'admin' | 'voluntario';
+export type Rol = 'admin' | 'municipio' | 'brigadista' | 'voluntario';
+export type TipoMaterial = string; // id del catálogo de tipos de material
 
 export interface Usuario {
   id: string;
@@ -21,6 +22,7 @@ export interface Especie {
   temporadaSiembra?: string;
   tratamientoPregerminativo?: string;
   validada?: boolean;
+  notas?: string;
 }
 
 export interface PuntoAcopio {
@@ -37,6 +39,8 @@ export interface EntregaPoda {
   id: string;
   puntoId: string;
   kg: number;
+  tipoMaterial?: TipoMaterial;
+  especieArbol?: string;
   usuarioId?: string;
   notas?: string;
   creadoEn: string;
@@ -53,6 +57,8 @@ export interface Lote {
   semillasPorPildora: number;
   diametroMm?: number;
   pesoPildoraG?: number;
+  aditivos?: string[];
+  aditivosDetalle?: string;
   kgFicus?: number;
   advertencia?: string;
   usuarioId?: string;
@@ -65,6 +71,7 @@ export interface Dispersion {
   lat: number;
   lng: number;
   zona: string;
+  areaId?: string;
   municipio?: Municipio;
   loteId?: string;
   especieId?: string;
@@ -79,6 +86,7 @@ export interface Seguimiento {
   dispersionId: string;
   germinadas: number;
   vivas?: number;
+  alturaPromedioCm?: number;
   humedadSuelo?: 'seco' | 'húmedo' | 'encharcado';
   usuarioId?: string;
   notas?: string;
@@ -110,6 +118,7 @@ export interface ResumenDispersion {
   germinadas: number;
   vivas: number;
   tasaGerminacion: number | null;
+  alturaPromedioCm: number | null;
 }
 
 export interface Stats extends ResumenDispersion {
@@ -123,6 +132,8 @@ export interface Stats extends ResumenDispersion {
   jornadasProximas: number;
   porEspecie: (ResumenDispersion & { especieId: string; especie: string })[];
   porZona: (ResumenDispersion & { zona: string })[];
+  porArea: (ResumenDispersion & { areaId: string; area: string; estado: EstadoArea | null })[];
+  reforestacion: { areas: number; hectareas: number; jornadasRealizadas: number; jornadasProximas: number; participantes: number };
   ensayos: { tratamiento: string; prueba: string; unidad: string; n: number; promedio: number | null }[];
 }
 
@@ -151,6 +162,7 @@ export interface InventarioBiomasa {
   trituradaObtenida: number;
   usada: number;
   trituradaPorFraccion: Record<string, number>;
+  recibidaPorTipo: Record<string, number>;
   perdidaSecado: number | null;
   rendimientoTriturado: number | null;
 }
@@ -166,6 +178,8 @@ export interface Solicitud {
   lat: number;
   lng: number;
   kgEstimados?: number;
+  tipoMaterial?: TipoMaterial;
+  especieArbol?: string;
   estado: EstadoSolicitud;
   recolectorId?: string | null;
   puntoId?: string;
@@ -205,4 +219,77 @@ export interface Jornada {
   kgRecolectados?: number;
   notas?: string;
   creadoEn: string;
+}
+
+export type Riesgo = 'bajo' | 'medio' | 'alto';
+export type EstadoArea = 'quemada' | 'degradada' | 'en reforestación' | 'recuperada';
+
+export interface AreaReforestacion {
+  id: string;
+  nombre: string;
+  municipio?: Municipio;
+  lat: number;
+  lng: number;
+  radioM: number;
+  poligono?: [number, number][];
+  riesgoIncendio: Riesgo;
+  estado: EstadoArea;
+  fechaIncendio?: string;
+  hectareas?: number;
+  especiesRecomendadas: string[];
+  notas?: string;
+  creadoEn: string;
+}
+
+export interface JornadaReforestacion {
+  id: string;
+  titulo: string;
+  areaId: string;
+  area?: AreaReforestacion | null;
+  fecha: string;
+  horaInicio?: string;
+  horaFin?: string;
+  puntoReunion?: string;
+  cupo?: number;
+  pildorasMeta?: number;
+  organiza?: string;
+  descripcion?: string;
+  estado: 'programada' | 'realizada' | 'cancelada';
+  inscritos: string[];
+  asistentes: string[];
+  pildorasDispersadas?: number;
+  creadoEn: string;
+}
+
+// Elemento de un catálogo editable (tratamientos, aditivos, tipos de material)
+export interface ItemCatalogo {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+}
+
+export interface Prueba extends ItemCatalogo {
+  unidad: string;
+  instrucciones?: string;
+  calculada?: boolean;
+}
+
+export interface Catalogos {
+  tiposMaterial: ItemCatalogo[];
+  aditivos: ItemCatalogo[];
+  tratamientos: ItemCatalogo[];
+  pruebas: Prueba[];
+  riesgos: Riesgo[];
+  estadosArea: EstadoArea[];
+  roles: Rol[];
+}
+
+export interface ParadaRuta {
+  tipo: 'solicitud' | 'jornada' | 'acopio';
+  id: string;
+  nombre: string;
+  lat: number;
+  lng: number;
+  detalle: string;
+  km: number;
 }

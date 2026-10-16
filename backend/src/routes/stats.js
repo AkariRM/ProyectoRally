@@ -24,6 +24,7 @@ function resumenDispersiones(dispersiones, seguimientos) {
   const pildorasRevisadas = sum(revisadas, 'cantidad');
   const germinadas = revisadas.reduce((t, d) => t + seguimientos[d.id].germinadas, 0);
   const vivas = revisadas.reduce((t, d) => t + (seguimientos[d.id].vivas ?? seguimientos[d.id].germinadas), 0);
+  const alturas = revisadas.map(d => seguimientos[d.id].alturaPromedioCm).filter(a => typeof a === 'number');
   return {
     dispersiones: dispersiones.length,
     pildoras: sum(dispersiones, 'cantidad'),
@@ -32,6 +33,7 @@ function resumenDispersiones(dispersiones, seguimientos) {
     vivas,
     // plántulas por cada 100 píldoras revisadas
     tasaGerminacion: pildorasRevisadas ? redondear((germinadas / pildorasRevisadas) * 100) : null,
+    alturaPromedioCm: redondear(promedio(alturas)),
   };
 }
 
@@ -61,6 +63,24 @@ router.get('/', (req, res) => {
     ...resumenDispersiones(items, seguimientos),
   }));
 
+  const areas = Object.fromEntries(db.list('areasReforestacion').map(a => [a.id, a]));
+  const porArea = Object.entries(agrupar(dispersiones.filter(d => d.areaId), 'areaId')).map(([id, items]) => ({
+    areaId: id,
+    area: areas[id] ? areas[id].nombre : id,
+    estado: areas[id] ? areas[id].estado : null,
+    ...resumenDispersiones(items, seguimientos),
+  }));
+
+  const jornadasRef = db.list('jornadasReforestacion');
+  const realizadas = jornadasRef.filter(j => j.estado === 'realizada');
+  const reforestacion = {
+    areas: db.list('areasReforestacion').length,
+    hectareas: redondear(sum(db.list('areasReforestacion'), 'hectareas')),
+    jornadasRealizadas: realizadas.length,
+    jornadasProximas: jornadasRef.filter(j => j.estado === 'programada' && j.fecha >= fechaLocal()).length,
+    participantes: new Set(realizadas.flatMap(j => j.asistentes || [])).size,
+  };
+
   // Ensayos: promedio por tratamiento y prueba
   const ensayos = [];
   for (const [tratamiento, items] of Object.entries(agrupar(db.list('ensayos'), 'tratamiento'))) {
@@ -89,6 +109,8 @@ router.get('/', (req, res) => {
       jornadasProximas: db.list('jornadas').filter(j => j.estado === 'programada' && j.fecha >= fechaLocal()).length,
       porEspecie,
       porZona,
+      porArea,
+      reforestacion,
       ensayos,
     },
   });

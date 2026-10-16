@@ -18,13 +18,20 @@ module.exports = crudRouter(
     pesoPildoraG: { type: 'number', min: 1 },
     semillasPorPildora: { type: 'number', min: 1 },
     diametroMm: { type: 'number', min: 1 },
+    aditivos: { type: 'object' }, // lista, ej. ['micorrizas']
+    aditivosDetalle: { type: 'string' }, // dosis, cepa, proveedor…
     usuarioId: { type: 'string', ref: 'usuarios' },
     notas: { type: 'string' },
   },
   {
     validate: data => {
+      const errores = [];
       const suma = (data.arcillaPct || 0) + (data.compostPct || 0) + (data.ficusPct || 0);
-      return Math.abs(suma - 100) > 0.5 ? [`la mezcla debe sumar 100% (suma ${suma}%)`] : [];
+      if (Math.abs(suma - 100) > 0.5) errores.push(`la mezcla debe sumar 100% (suma ${suma}%)`);
+      if (data.aditivos !== undefined && !(Array.isArray(data.aditivos) && data.aditivos.every(a => db.get('aditivos', a)))) {
+        errores.push(`aditivos debe ser una lista de ids del catálogo de aditivos: ${db.list('aditivos').map(a => a.id).join(', ')}`);
+      }
+      return errores;
     },
     beforeCreate: data => {
       const pesoPildoraG = data.pesoPildoraG || PESO_PILDORA_G;

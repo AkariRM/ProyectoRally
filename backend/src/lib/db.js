@@ -19,10 +19,15 @@ function load() {
     db = JSON.parse(JSON.stringify(seed));
     save();
   }
-  // Asegura que existan todas las colecciones aunque el archivo sea viejo
+  // Colecciones nuevas en un archivo viejo: se crean con sus datos iniciales
+  let cambio = false;
   for (const key of Object.keys(seed)) {
-    if (!Array.isArray(db[key])) db[key] = [];
+    if (!Array.isArray(db[key])) {
+      db[key] = JSON.parse(JSON.stringify(seed[key]));
+      cambio = true;
+    }
   }
+  if (cambio) save();
   return db;
 }
 

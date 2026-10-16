@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../lib/db');
 const {
-  hashPassword, verificarPassword, crearToken, publico, requiereUsuario, requiereAdmin,
+  ROLES, hashPassword, verificarPassword, crearToken, publico, requiereUsuario, requiereAdmin,
 } = require('../lib/auth');
 
 const router = express.Router();
@@ -53,12 +53,12 @@ router.get('/', requiereAdmin, (req, res) => {
   res.json({ success: true, data: db.list('usuarios').map(publico) });
 });
 
-// PUT /api/usuarios/:id/rol { rol: 'admin' | 'voluntario' }
+// PUT /api/usuarios/:id/rol { rol: 'admin' | 'municipio' | 'brigadista' | 'voluntario' }
 router.put('/:id/rol', requiereAdmin, (req, res) => {
   const usuario = db.get('usuarios', req.params.id);
   if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
   const { rol } = req.body;
-  if (!['admin', 'voluntario'].includes(rol)) return res.status(400).json({ error: 'rol debe ser admin o voluntario' });
+  if (!ROLES.includes(rol)) return res.status(400).json({ error: `rol debe ser uno de: ${ROLES.join(', ')}` });
   if (usuario.id === req.usuario.id && rol !== 'admin') {
     return res.status(400).json({ error: 'No puedes quitarte el rol de administrador a ti mismo' });
   }

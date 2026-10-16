@@ -21,6 +21,12 @@ function inventario() {
   const trituradaObtenida = sum(triturados, 'kgSalida');
   const usada = sum(db.list('lotes'), 'kgFicus');
 
+  const recibidaPorTipo = {};
+  for (const e of db.list('entregasPoda')) {
+    const t = e.tipoMaterial || 'sin clasificar';
+    recibidaPorTipo[t] = r2((recibidaPorTipo[t] || 0) + e.kg);
+  }
+
   const porFraccion = {};
   for (const t of triturados) {
     const f = t.fraccion || 'sin clasificar';
@@ -38,6 +44,7 @@ function inventario() {
     trituradaObtenida: r2(trituradaObtenida),
     usada: r2(usada),
     trituradaPorFraccion: porFraccion,
+    recibidaPorTipo,
     // rendimientos (%)
     perdidaSecado: frescaSecada ? r2(((frescaSecada - secaObtenida) / frescaSecada) * 100) : null,
     rendimientoTriturado: secaTriturada ? r2((trituradaObtenida / secaTriturada) * 100) : null,

@@ -3,7 +3,8 @@ import { api } from '@/lib/api';
 import { alerta, confirmar } from '@/lib/alerta';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
-import type { Usuario } from '@/lib/types';
+import type { Rol, Usuario } from '@/lib/types';
+import { DESCRIPCION_ROL, NOMBRE_ROL, ROLES } from '@/lib/catalogos';
 import { Aviso, BotonChico, colores, fecha, Pantalla, Seccion, Tarjeta } from '@/components/ui';
 
 // Panel de administración: lista de usuarios, cambiar rol, eliminar
@@ -19,13 +20,9 @@ export default function Admin() {
     );
   }
 
-  const cambiarRol = async (u: Usuario) => {
-    const rol = u.rol === 'admin' ? 'voluntario' : 'admin';
-    const ok = await confirmar(
-      rol === 'admin' ? 'Hacer administrador' : 'Quitar administrador',
-      `${u.email} ${rol === 'admin' ? 'podrá modificar puntos, zonas y usuarios.' : 'dejará de ser administrador.'}`,
-      'Confirmar',
-    );
+  const cambiarRol = async (u: Usuario, rol: Rol) => {
+    if (rol === u.rol) return;
+    const ok = await confirmar(`Cambiar a ${NOMBRE_ROL[rol]}`, `${u.email}: ${DESCRIPCION_ROL[rol]}.`, 'Confirmar');
     if (!ok) return;
     try {
       await api.cambiarRol(u.id, rol);
@@ -45,16 +42,16 @@ export default function Admin() {
     }
   };
 
-  const admins = (usuarios ?? []).filter(u => u.rol === 'admin');
-  const voluntarios = (usuarios ?? []).filter(u => u.rol !== 'admin');
 
   const fila = (u: Usuario) => (
     <Tarjeta key={u.id}>
       <Text style={styles.email}>{u.email}{u.id === yo?.id ? ' (tú)' : ''}</Text>
-      <Text style={styles.detalle}>{u.rol === 'admin' ? '⭐ Administrador' : 'Voluntario'}{u.creadoEn ? ` · desde ${fecha(u.creadoEn)}` : ''}</Text>
+      <Text style={styles.detalle}>{NOMBRE_ROL[u.rol] ?? u.rol}{u.creadoEn ? ` · desde ${fecha(u.creadoEn)}` : ''}</Text>
       {u.id !== yo?.id ? (
         <View style={styles.acciones}>
-          <BotonChico texto={u.rol === 'admin' ? 'Quitar admin' : 'Hacer admin'} onPress={() => cambiarRol(u)} />
+          {ROLES.map(r => (
+            <BotonChico key={r} texto={NOMBRE_ROL[r]} relleno={u.rol === r} onPress={() => cambiarRol(u, r)} />
+          ))}
           <BotonChico texto="Eliminar" color={colores.rojo} onPress={() => eliminar(u)} />
         </View>
       ) : null}
@@ -64,11 +61,20 @@ export default function Admin() {
   return (
     <Pantalla titulo="Administración ⚙️" subtitulo={`${usuarios?.length ?? 0} usuarios registrados`}>
       {error ? <Aviso texto={error} /> : null}
-      <Aviso tipo="info" texto="Los administradores pueden agregar, editar y eliminar puntos de acopio, zonas de poda y jornadas, y administrar usuarios." />
-      <Seccion>Administradores</Seccion>
-      {admins.map(fila)}
-      <Seccion>Voluntarios</Seccion>
-      {voluntarios.length ? voluntarios.map(fila) : <Text style={styles.detalle}>Aún no hay voluntarios registrados.</Text>}
+      <Tarjeta>
+        {ROLES.map(r => (
+          <Text key={r} style={styles.detalle}><Text style={styles.email}>{NOMBRE_ROL[r]}</Text>: {DESCRIPCION_ROL[r]}</Text>
+        ))}
+      </Tarjeta>
+      {ROLES.map(r => {
+        const lista = (usuarios ?? []).filter(u => u.rol === r);
+        return lista.length ? (
+          <View key={r}>
+            <Seccion>{NOMBRE_ROL[r]} ({lista.length})</Seccion>
+            {lista.map(fila)}
+          </View>
+        ) : null;
+      })}
     </Pantalla>
   );
 }

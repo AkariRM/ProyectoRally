@@ -4,7 +4,8 @@ import { api } from '@/lib/api';
 import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
-import type { EstadoSolicitud, Municipio, Solicitud } from '@/lib/types';
+import type { EstadoSolicitud, Municipio, ParadaRuta, Solicitud, TipoMaterial } from '@/lib/types';
+import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
 import { Aviso, Boton, BotonChico, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
 import { alerta } from '@/lib/alerta';
@@ -74,8 +75,13 @@ export default function Solicitudes() {
   const [direccion, setDireccion] = useState('');
   const [municipio, setMunicipio] = useState<Municipio | null>('Jiquilpan');
   const [kg, setKg] = useState('');
+  const [tipoMaterial, setTipoMaterial] = useState<TipoMaterial | null>(null);
+  const { data: catalogos } = useCatalogos();
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [ruta, setRuta] = useState<{ paradas: ParadaRuta[]; totalKm: number; googleMapsUrl: string | null } | null>(null);
+  const [destinoRuta, setDestinoRuta] = useState<string | null>(null);
+  const [calculando, setCalculando] = useState(false);
   const [cerrando, setCerrando] = useState<string | null>(null);
   const [verCerradas, setVerCerradas] = useState(false);
 
@@ -90,7 +96,8 @@ export default function Solicitudes() {
     try {
       await api.crearSolicitud({
         nombre, contacto, direccion, municipio: municipio ?? undefined,
-        lat: coords.lat, lng: coords.lng, kgEstimados: kg ? Number(kg) : undefined, notas, usuarioId: usuario?.id,
+        lat: coords.lat, lng: coords.lng, kgEstimados: kg ? Number(kg) : undefined, notas,
+        tipoMaterial: tipoMaterial ?? undefined,
       });
       setDireccion('');
       setKg('');
@@ -114,6 +121,19 @@ export default function Solicitudes() {
     }
   };
 
+  const calcularRuta = async () => {
+    setCalculando(true);
+    const c = await obtenerUbicacion('calcular la ruta desde donde estás');
+    if (c) {
+      try {
+        setRuta(await api.ruta(c.lat, c.lng, destinoRuta ?? undefined));
+      } catch (e) {
+        alerta('Error', (e as Error).message);
+      }
+    }
+    setCalculando(false);
+  };
+
   const abrirMapa = (s: Solicitud) =>
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`);
 
@@ -127,6 +147,32 @@ export default function Solicitudes() {
         }))}
       />
       <Text style={styles.leyenda}>🔴 Pendiente   🟡 Asignada a un voluntario</Text>
+
+      <Seccion>🧭 Ruta sugerida de recolección</Seccion>
+      <Text style={styles.detalle}>Ordena las solicitudes abiertas y las podas de hoy por cercanía desde tu ubicación.</Text>
+      <Opciones
+        etiqueta="Terminar en el punto de acopio (opcional)"
+        opciones={puntos.map(p => p.id)}
+        nombres={Object.fromEntries(puntos.map(p => [p.id, p.nombre]))}
+        valor={destinoRuta}
+        onChange={setDestinoRuta}
+      />
+      <Boton texto="Calcular ruta" color={colores.azul} onPress={calcularRuta} cargando={calculando} secundario />
+      {ruta ? (
+        <Tarjeta>
+          {!ruta.paradas.length ? <Text style={styles.detalle}>No hay paradas pendientes.</Text> : null}
+          {ruta.paradas.map((p, i) => (
+            <Text key={`${p.tipo}-${p.id}`} style={styles.parada}>
+              {i + 1}. {p.tipo === 'acopio' ? '📍' : p.tipo === 'jornada' ? '✂️' : '🏠'} {p.nombre}
+              <Text style={styles.detalle}>  {p.detalle} · {p.km} km</Text>
+            </Text>
+          ))}
+          {ruta.paradas.length ? <Text style={styles.total}>Total aprox.: {ruta.totalKm} km en línea recta</Text> : null}
+          {ruta.googleMapsUrl ? (
+            <BotonChico texto="Abrir ruta en Google Maps" color={colores.azul} onPress={() => Linking.openURL(ruta.googleMapsUrl!)} />
+          ) : null}
+        </Tarjeta>
+      ) : null}
 
       <Seccion>Solicitudes ({abiertas.length} abiertas)</Seccion>
       <BotonChico texto={verCerradas ? 'Ver solo abiertas' : 'Ver todas'} onPress={() => setVerCerradas(!verCerradas)} />
@@ -169,6 +215,13 @@ export default function Solicitudes() {
       <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
       <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} />
       <Campo etiqueta="Teléfono (opcional)" value={contacto} onChangeText={setContacto} keyboardType="phone-pad" />
+      <Opciones
+        etiqueta="Tipo de material"
+        opciones={(catalogos?.tiposMaterial ?? []).map(t => t.id)}
+        nombres={nombresDe(catalogos?.tiposMaterial)}
+        valor={tipoMaterial}
+        onChange={setTipoMaterial}
+      />
       <Campo etiqueta="Kg aproximados" value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder="Un costal lleno ≈ 10–15 kg" />
       <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline placeholder="Ej: disponible después de las 4 pm" />
       <Boton texto="Enviar solicitud" color={colores.tierra} onPress={enviar} cargando={enviando} />
@@ -182,5 +235,7 @@ const styles = StyleSheet.create({
   nombre: { fontSize: 15, fontWeight: '600', color: colores.texto },
   detalle: { fontSize: 12, color: colores.textoSuave, marginTop: 2 },
   acciones: { flexDirection: 'row', flexWrap: 'wrap' },
+  parada: { fontSize: 14, color: colores.texto, marginBottom: 6 },
+  total: { fontSize: 13, fontWeight: '700', color: colores.azul, marginTop: 4 },
   subform: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 },
 });

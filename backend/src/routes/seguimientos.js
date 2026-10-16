@@ -7,6 +7,7 @@ module.exports = crudRouter(
     dispersionId: { type: 'string', required: true, ref: 'dispersiones' },
     germinadas: { type: 'number', required: true, min: 0 },
     vivas: { type: 'number', min: 0 },
+    alturaPromedioCm: { type: 'number', min: 0, max: 1000 }, // crecimiento (regla / cinta métrica)
     humedadSuelo: { type: 'enum', values: ['seco', 'húmedo', 'encharcado'] }, // a simple vista / al tacto
     usuarioId: { type: 'string', ref: 'usuarios' },
     notas: { type: 'string' },

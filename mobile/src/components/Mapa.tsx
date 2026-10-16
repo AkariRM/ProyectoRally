@@ -16,6 +16,14 @@ export interface ZonaMapa {
   lng: number;
   radioM: number;
   activa?: boolean; // resaltada (ej. el usuario recibe avisos de ella)
+  color?: string; // color hex, ej. '#C62828' (reemplaza al de activa)
+  titulo?: string;
+}
+
+// '#C62828' + 0.25 → 'rgba(198,40,40,0.25)'
+export function conAlfa(hex: string, alfa: number) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alfa})`;
 }
 
 // Centro aproximado entre Jiquilpan y Sahuayo
@@ -34,16 +42,19 @@ export default function Mapa({ puntos = [], zonas = [], alto = 220 }: { puntos?:
       // Sin los botones de Android que abren la app de Google Maps
       toolbarEnabled={false}
     >
-      {zonas.map(z => (
-        <Circle
-          key={z.id}
-          center={{ latitude: z.lat, longitude: z.lng }}
-          radius={z.radioM}
-          strokeColor={z.activa ? 'rgba(46,125,50,0.9)' : 'rgba(141,110,99,0.8)'}
-          fillColor={z.activa ? 'rgba(46,125,50,0.25)' : 'rgba(141,110,99,0.2)'}
-          strokeWidth={2}
-        />
-      ))}
+      {zonas.map(z => {
+        const color = z.color ?? (z.activa ? '#2E7D32' : '#8D6E63');
+        return (
+          <Circle
+            key={z.id}
+            center={{ latitude: z.lat, longitude: z.lng }}
+            radius={z.radioM}
+            strokeColor={conAlfa(color, 0.9)}
+            fillColor={conAlfa(color, 0.22)}
+            strokeWidth={2}
+          />
+        );
+      })}
       {puntos.map(p => (
         <Marker
           key={p.id}

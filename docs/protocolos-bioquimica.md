@@ -1,4 +1,4 @@
-# Protocolos de Bioquímica — Píldoras Bióticas con Ficus benjamina
+# Protocolos de Bioquímica — Bio Red (píldoras bióticas con Ficus benjamina)
 
 Todos los protocolos usan material de bajo costo y **no requieren sensores**: báscula de cocina (0.1 g), horno doméstico o estufa de laboratorio, licuadora o molino, tamices/coladores, frascos, cajas Petri (o recipientes con tapa), papel filtro (o servilleta), regla, cronómetro y tiras de pH.
 
@@ -139,6 +139,25 @@ Hacer cada prueba con 3–5 píldoras por tratamiento y capturarla en **Laborato
 | **Resistencia a caída** | Soltar desde 1 m sobre piso duro repetidamente. Anotar cuántas caídas aguanta sin partirse (máximo 10). |
 | **Desintegración en agua** | Colocar en un vaso con 200 mL de agua sin agitar. Medir los minutos hasta que pierde la forma. Interesa que **no** se deshaga en minutos (aguante una lluvia) pero sí en días en el suelo. |
 
+## 8b. Protección térmica
+
+Mide si el recubrimiento protege a la semilla del calor del suelo en estiaje.
+
+1. Coloca las píldoras de cada tratamiento sobre suelo descubierto al sol del mediodía, 1 h antes de medir.
+2. Con un termómetro de cocina de punta, mide la temperatura en el centro de la píldora y la de la superficie del suelo junto a ella.
+3. Protección (°C) = temperatura del suelo − temperatura dentro de la píldora.
+4. Haz 5 píldoras por tratamiento y 3 días distintos. Captura en **Ensayos → Protección térmica**.
+
+## 8c. Aditivos biológicos
+
+Prueba si las micorrizas, las bacterias fijadoras de nitrógeno o la lombricomposta mejoran la supervivencia en suelo quemado.
+
+1. Parte de la mejor mezcla C y agrega el aditivo según la dosis del proveedor. Por ejemplo, inóculo de micorrizas a 5 g/kg de mezcla.
+2. Mezcla el aditivo **al final** y sin calor. Seca las píldoras a la sombra, nunca al sol ni en horno, para no matar los microorganismos.
+3. Crea el lote en la app marcando los **aditivos** y anota la dosis en "Detalle de aditivos".
+4. Compara **C** contra **D – C + aditivo biológico** en germinación (sección 9) y en campo (sección 10). Usa suelo del área quemada.
+5. Mide también la altura de las plántulas a los 30 y 60 días.
+
 ## 9. Germinación en charola (antes de ir a campo)
 
 1. Llenar charolas con suelo del sitio de dispersión, sin enterrar las píldoras (se colocan sobre la superficie, como en campo).
@@ -151,7 +170,7 @@ Hacer cada prueba con 3–5 píldoras por tratamiento y capturarla en **Laborato
 1. Marcar parcelas de 1 m² con estacas y cordón: una parcela por tratamiento, con al menos 3 parcelas.
 2. Colocar el mismo número de píldoras por parcela (ej. 20).
 3. Registrar la dispersión en la app con GPS (**Dispersar**).
-4. Revisar a las 2, 4 y 8 semanas: contar plántulas germinadas y vivas y anotar la humedad del suelo al tacto (**Seguimiento**).
+4. Revisar a las 2, 4 y 8 semanas: contar plántulas germinadas y vivas, medir la **altura promedio** de 5 plántulas con regla y anotar la humedad del suelo al tacto (**Seguimiento**).
 5. Opcional: tomar una muestra de suelo al inicio y al final para medir materia orgánica.
 
 ## 11. Análisis de resultados

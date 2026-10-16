@@ -20,6 +20,7 @@ export default function SeguimientoDispersion() {
 
   const [germinadas, setGerminadas] = useState('');
   const [vivas, setVivas] = useState('');
+  const [altura, setAltura] = useState('');
   const [humedad, setHumedad] = useState<Seguimiento['humedadSuelo'] | null>(null);
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -34,12 +35,14 @@ export default function SeguimientoDispersion() {
         dispersionId: id,
         germinadas: Number(germinadas),
         vivas: vivas === '' ? undefined : Number(vivas),
+        alturaPromedioCm: altura === '' ? undefined : Number(altura),
         humedadSuelo: humedad ?? undefined,
         notas,
         usuarioId: usuario?.id,
       });
       setGerminadas('');
       setVivas('');
+      setAltura('');
       setNotas('');
       alerta('Guardado', 'Seguimiento registrado.');
       recargar();
@@ -57,6 +60,7 @@ export default function SeguimientoDispersion() {
 
       <Campo etiqueta="Plántulas germinadas (total)" value={germinadas} onChangeText={setGerminadas} keyboardType="number-pad" placeholder="Ej: 12" />
       <Campo etiqueta="Plántulas vivas hoy" value={vivas} onChangeText={setVivas} keyboardType="number-pad" placeholder="Ej: 9" />
+      <Campo etiqueta="Altura promedio (cm)" value={altura} onChangeText={setAltura} keyboardType="decimal-pad" placeholder="Mide 5 plántulas con regla y promedia" />
       <Opciones etiqueta="Humedad del suelo (al tacto)" opciones={HUMEDAD} valor={humedad ?? null} onChange={setHumedad} />
       <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline placeholder="Ej: algunas píldoras siguen enteras, hay hormigas" />
       <Boton texto="Guardar seguimiento" onPress={enviar} cargando={enviando} />
@@ -64,7 +68,9 @@ export default function SeguimientoDispersion() {
       {data?.seguimientos.length ? <Seccion>Historial</Seccion> : null}
       {[...(data?.seguimientos ?? [])].reverse().map(s => (
         <Tarjeta key={s.id}>
-          <Text style={styles.nombre}>{s.germinadas} germinadas · {s.vivas ?? '–'} vivas</Text>
+          <Text style={styles.nombre}>
+            {s.germinadas} germinadas · {s.vivas ?? '–'} vivas{s.alturaPromedioCm !== undefined ? ` · ${s.alturaPromedioCm} cm` : ''}
+          </Text>
           <Text style={styles.detalle}>
             {fecha(s.creadoEn)}{s.humedadSuelo ? ` · suelo ${s.humedadSuelo}` : ''}{s.notas ? ` · ${s.notas}` : ''}
           </Text>

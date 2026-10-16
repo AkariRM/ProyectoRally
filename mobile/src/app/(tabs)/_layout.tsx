@@ -10,6 +10,8 @@ const icono = (name: Icono) => ({ color }: { color: ColorValue }) => <FontAwesom
 export default function TabsLayout() {
   return (
     <Tabs
+      // El botón atrás regresa a la pestaña visitada antes (no siempre a Inicio)
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colores.verde,
@@ -18,7 +20,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Inicio', tabBarIcon: icono('home') }} />
       <Tabs.Screen name="acopio" options={{ title: 'Acopio', tabBarIcon: icono('map-marker') }} />
-      <Tabs.Screen name="dispersar" options={{ title: 'Dispersar', tabBarIcon: icono('leaf') }} />
+      <Tabs.Screen name="reforestar" options={{ title: 'Reforestar', tabBarIcon: icono('tree') }} />
       <Tabs.Screen name="laboratorio" options={{ title: 'Laboratorio', tabBarIcon: icono('flask') }} />
       <Tabs.Screen name="impacto" options={{ title: 'Impacto', tabBarIcon: icono('bar-chart') }} />
     </Tabs>

@@ -1,12 +1,14 @@
 // Autenticación sencilla sin dependencias externas:
 //  - contraseñas con scrypt + sal
 //  - token firmado con HMAC: <usuarioId>.<expira>.<firma>
-//  - roles: 'admin' y 'voluntario'
+//  - roles: 'admin', 'municipio' (gestiona la poda), 'brigadista' (gestiona la
+//    reforestación) y 'voluntario'. El admin puede todo.
 
 const crypto = require('crypto');
 const db = require('./db');
 
 const DURACION_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+const ROLES = ['admin', 'municipio', 'brigadista', 'voluntario'];
 
 function secreto() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
@@ -51,10 +53,13 @@ const publico = u => {
   return resto;
 };
 
-// Lee el token (si viene) y deja el usuario en req.usuario
+// Lee el token (si viene) y deja el usuario en req.usuario.
+// Las descargas de /api/exportar también aceptan ?token= para abrirlas desde el navegador.
 function autenticar(req, res, next) {
   const [tipo, token] = String(req.headers.authorization || '').split(' ');
-  req.usuario = tipo === 'Bearer' ? leerToken(token) : null;
+  if (tipo === 'Bearer') req.usuario = leerToken(token);
+  else if (req.path.startsWith('/api/exportar/') && req.query.token) req.usuario = leerToken(req.query.token);
+  else req.usuario = null;
   next();
 }
 
@@ -67,6 +72,19 @@ function requiereAdmin(req, res, next) {
   if (!req.usuario) return res.status(401).json({ error: 'Inicia sesión para hacer esto' });
   if (req.usuario.rol !== 'admin') return res.status(403).json({ error: 'Solo un administrador puede hacer esto' });
   next();
+}
+
+const tieneRol = (usuario, roles) => !!usuario && (usuario.rol === 'admin' || roles.includes(usuario.rol));
+
+// requiereRol('municipio') → admin o municipio
+function requiereRol(...roles) {
+  return (req, res, next) => {
+    if (!req.usuario) return res.status(401).json({ error: 'Inicia sesión para hacer esto' });
+    if (!tieneRol(req.usuario, roles)) {
+      return res.status(403).json({ error: `Solo ${['admin', ...roles].join(' o ')} puede hacer esto` });
+    }
+    next();
+  };
 }
 
 // Crea (o actualiza la clave de) la cuenta de administrador definida en .env
@@ -90,6 +108,6 @@ function asegurarAdmin() {
 }
 
 module.exports = {
-  hashPassword, verificarPassword, crearToken, leerToken, publico,
-  autenticar, requiereUsuario, requiereAdmin, asegurarAdmin,
+  ROLES, hashPassword, verificarPassword, crearToken, leerToken, publico,
+  autenticar, requiereUsuario, requiereAdmin, requiereRol, tieneRol, asegurarAdmin,
 };

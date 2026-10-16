@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/lib/api';
-import { avisosDisponibles, guardarZonasConAviso, pedirPermiso, programarAvisos, zonasConAviso } from '@/lib/avisos';
+import { actualizarAvisos, avisosDisponibles, guardarZonasConAviso, pedirPermiso, zonasConAviso } from '@/lib/avisos';
 import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
-import type { Jornada, Municipio, ZonaPoda } from '@/lib/types';
+import type { Jornada, Municipio, TipoMaterial, ZonaPoda } from '@/lib/types';
+import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
 import {
   aYyyyMmDd, Aviso, Boton, BotonChico, Campo, colores, DIAS_SEMANA, fechaCorta,
@@ -26,8 +27,9 @@ const horario = (z: { diasSemana?: number[]; horaInicio?: string; horaFin?: stri
 function RecoleccionJornada({ jornada, puntos, onListo }: {
   jornada: Jornada; puntos: { id: string; nombre: string }[]; onListo: () => void;
 }) {
-  const { usuario } = useUsuario();
   const [kg, setKg] = useState('');
+  const [tipoMaterial, setTipoMaterial] = useState<TipoMaterial | null>(null);
+  const { data: catalogos } = useCatalogos();
   const [puntoId, setPuntoId] = useState<string | null>(jornada.puntoDestinoId ?? null);
   const [enviando, setEnviando] = useState(false);
 
@@ -36,7 +38,7 @@ function RecoleccionJornada({ jornada, puntos, onListo }: {
     setEnviando(true);
     try {
       await api.cambiarEstadoJornada(jornada.id, {
-        estado: 'recolectada', kgRecolectados: Number(kg), puntoDestinoId: puntoId, usuarioId: usuario?.id,
+        estado: 'recolectada', kgRecolectados: Number(kg), puntoDestinoId: puntoId, tipoMaterial: tipoMaterial ?? undefined,
       });
       alerta('¡Gracias!', `${kg} kg registrados en el punto de acopio.`);
       onListo();
@@ -50,6 +52,13 @@ function RecoleccionJornada({ jornada, puntos, onListo }: {
   return (
     <View style={styles.subform}>
       <Campo etiqueta="Kg de poda recolectada" value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder="Ej: 30" />
+      <Opciones
+        etiqueta="Tipo de material"
+        opciones={(catalogos?.tiposMaterial ?? []).map(t => t.id)}
+        nombres={nombresDe(catalogos?.tiposMaterial)}
+        valor={tipoMaterial}
+        onChange={setTipoMaterial}
+      />
       <Opciones
         etiqueta="Se llevó al punto"
         opciones={puntos.map(p => p.id)}
@@ -171,7 +180,8 @@ function NuevaJornada({ zonas, onListo }: { zonas: ZonaPoda[]; onListo: () => vo
 }
 
 export default function Zonas() {
-  const { usuario, esAdmin } = useUsuario();
+  const { usuario, esAdmin, puede } = useUsuario();
+  const gestiona = puede('municipio'); // admin o municipio
   const { data, error, recargar } = useData(async () => {
     const [zonas, jornadas, puntos] = await Promise.all([api.zonasPoda(), api.jornadasProximas(), api.puntosAcopio()]);
     return { zonas, jornadas, puntos };
@@ -189,8 +199,8 @@ export default function Zonas() {
   // Reprograma los avisos cada vez que cambian las jornadas o las zonas seguidas
   useEffect(() => {
     if (!data) return;
-    programarAvisos(data.jornadas, suscritas).then(setAvisosProgramados).catch(() => setAvisosProgramados(null));
-  }, [data, suscritas]);
+    actualizarAvisos(usuario?.id).then(setAvisosProgramados).catch(() => setAvisosProgramados(null));
+  }, [data, suscritas, usuario?.id]);
 
   const zonas = data?.zonas ?? [];
   const puntos = data?.puntos ?? [];
@@ -300,18 +310,18 @@ export default function Zonas() {
               relleno={suscritas.includes(z.id)}
               onPress={() => alternarAviso(z.id)}
             />
-            {esAdmin ? (
+            {gestiona ? (
               <>
                 <BotonChico texto="✏️ Editar" onPress={() => setEditandoZona(z.id)} />
                 <BotonChico texto="Generar jornadas" color={colores.azul} onPress={() => generar(z)} />
-                <BotonChico texto="🗑️ Eliminar" color={colores.rojo} onPress={() => eliminarZona(z)} />
+                {esAdmin ? <BotonChico texto="🗑️ Eliminar" color={colores.rojo} onPress={() => eliminarZona(z)} /> : null}
               </>
             ) : null}
           </View>
         </Tarjeta>
       ))}
 
-      {esAdmin ? (
+      {gestiona ? (
       <View style={styles.acciones}>
         <BotonChico texto="+ Nueva zona" relleno={formulario === 'zona'} onPress={() => setFormulario(formulario === 'zona' ? null : 'zona')} />
         <BotonChico texto="+ Jornada puntual" relleno={formulario === 'jornada'} onPress={() => setFormulario(formulario === 'jornada' ? null : 'jornada')} />

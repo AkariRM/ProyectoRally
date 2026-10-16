@@ -247,4 +247,181 @@ describe('API Píldoras Bióticas', () => {
     // Ya como admin puede crear puntos
     await comoVol(request(app).post('/api/puntos-acopio').send({ nombre: 'Nuevo', direccion: 'Sahuayo' })).expect(201);
   });
+
+  // Crea un usuario con un rol y devuelve su sesión
+  async function crearConRol(email, rol) {
+    const s = (await request(app).post('/api/usuarios/registro').send({ email, password: 'secreta1' })).body.data;
+    await comoAdmin(request(app).put(`/api/usuarios/${s.usuario.id}/rol`).send({ rol })).expect(200);
+    return s;
+  }
+
+  test('roles: municipio gestiona la poda, brigadista la reforestación', async () => {
+    const muni = await crearConRol('muni@test.mx', 'municipio');
+    const brig = await crearConRol('brig@test.mx', 'brigadista');
+    const como = s => conToken(s.token);
+
+    const zona = { nombre: 'Camellón Av. Juárez', lat: 19.99, lng: -102.72, diasSemana: [5] };
+    await comoVol(request(app).post('/api/zonas-poda').send(zona)).expect(403);
+    await como(brig)(request(app).post('/api/zonas-poda').send(zona)).expect(403);
+    await como(muni)(request(app).post('/api/zonas-poda').send(zona)).expect(201);
+
+    const area = { nombre: 'Cerro de San Francisco', lat: 19.98, lng: -102.73, hectareas: 12, fechaIncendio: '2026-03-15' };
+    await como(muni)(request(app).post('/api/areas-reforestacion').send(area)).expect(403);
+    const creada = await como(brig)(request(app).post('/api/areas-reforestacion').send(area)).expect(201);
+    expect(creada.body.data).toMatchObject({ estado: 'quemada', riesgoIncendio: 'alto', radioM: 300 });
+
+    // Nadie más que admin borra
+    await como(brig)(request(app).delete(`/api/areas-reforestacion/${creada.body.data.id}`)).expect(403);
+  });
+
+  test('jornada de reforestación: inscripción con cupo, cierre con asistencia y dispersión', async () => {
+    const brig = await crearConRol('brig@test.mx', 'brigadista');
+    const como = s => conToken(s.token);
+    const otro = (await request(app).post('/api/usuarios/registro').send({ email: 'otro@test.mx', password: 'secreta1' })).body.data;
+
+    const area = (await como(brig)(request(app).post('/api/areas-reforestacion')
+      .send({ nombre: 'Ladera norte', lat: 19.98, lng: -102.73, especiesRecomendadas: ['pino-leiophylla', 'tepeguaje'] }))).body.data;
+
+    const fecha = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+    const jornada = (await como(brig)(request(app).post('/api/jornadas-reforestacion')
+      .send({ titulo: 'Gran reforestación', areaId: area.id, fecha, horaInicio: '07:00', cupo: 1, pildorasMeta: 500 }))
+      .expect(201)).body.data;
+    expect(jornada).toMatchObject({ estado: 'programada', inscritos: [] });
+
+    await comoVol(request(app).post(`/api/jornadas-reforestacion/${jornada.id}/inscribirme`).send({})).expect(200);
+    const llena = await conToken(otro.token)(request(app).post(`/api/jornadas-reforestacion/${jornada.id}/inscribirme`).send({}));
+    expect(llena.status).toBe(400);
+
+    const proximas = await comoVol(request(app)).get('/api/jornadas-reforestacion/proximas');
+    expect(proximas.body.data[0].area.nombre).toBe('Ladera norte');
+
+    const inscritos = await como(brig)(request(app).get(`/api/jornadas-reforestacion/${jornada.id}/inscritos`)).expect(200);
+    expect(inscritos.body.data).toEqual([{ id: vol.usuario.id, email: 'vol@test.mx' }]);
+    await comoVol(request(app).get(`/api/jornadas-reforestacion/${jornada.id}/inscritos`)).expect(403);
+
+    const cerrada = await como(brig)(request(app).put(`/api/jornadas-reforestacion/${jornada.id}/cerrar`)
+      .send({ estado: 'realizada', asistentes: [vol.usuario.id], pildorasDispersadas: 450, especieId: 'pino-leiophylla' }))
+      .expect(200);
+    expect(cerrada.body.data.dispersionId).toBeDefined();
+
+    const disp = await comoVol(request(app)).get(`/api/dispersiones/${cerrada.body.data.dispersionId}`);
+    expect(disp.body.data).toMatchObject({ areaId: area.id, cantidad: 450, especieId: 'pino-leiophylla' });
+
+    await comoVol(request(app)).post('/api/seguimientos')
+      .send({ dispersionId: disp.body.data.id, germinadas: 90, vivas: 80, alturaPromedioCm: 6.5 })
+      .expect(201);
+
+    const areaDespues = await comoVol(request(app)).get(`/api/areas-reforestacion/${area.id}`);
+    expect(areaDespues.body.data.estado).toBe('en reforestación');
+
+    const { body } = await comoVol(request(app)).get('/api/stats');
+    expect(body.stats.reforestacion).toMatchObject({ areas: 1, jornadasRealizadas: 1, participantes: 1 });
+    expect(body.stats.porArea[0]).toMatchObject({ area: 'Ladera norte', pildoras: 450, vivas: 80, alturaPromedioCm: 6.5 });
+  });
+
+  test('tipo de poda y aditivos biológicos', async () => {
+    await comoVol(request(app)).post('/api/entregas-poda')
+      .send({ puntoId: 'plaza-jiquilpan', kg: 4, tipoMaterial: 'hojas', especieArbol: 'Ficus benjamina' }).expect(201);
+    await comoVol(request(app)).post('/api/entregas-poda').send({ puntoId: 'plaza-jiquilpan', kg: 6, tipoMaterial: 'ramas finas' }).expect(201);
+    const mal = await comoVol(request(app)).post('/api/entregas-poda').send({ puntoId: 'plaza-jiquilpan', kg: 1, tipoMaterial: 'troncos' });
+    expect(mal.status).toBe(400);
+
+    const inv = await comoVol(request(app)).get('/api/procesos-biomasa/inventario');
+    expect(inv.body.data.recibidaPorTipo).toEqual({ hojas: 4, 'ramas finas': 6 });
+
+    const lote = await comoVol(request(app)).post('/api/lotes').send({
+      especieId: 'tepeguaje', cantidad: 50, arcillaPct: 50, compostPct: 30, ficusPct: 20,
+      aditivos: ['micorrizas'], aditivosDetalle: '5 g de inóculo por kg de mezcla',
+    }).expect(201);
+    expect(lote.body.data.aditivos).toEqual(['micorrizas']);
+    const malAditivo = await comoVol(request(app)).post('/api/lotes')
+      .send({ especieId: 'tepeguaje', cantidad: 5, arcillaPct: 50, compostPct: 30, ficusPct: 20, aditivos: ['magia'] });
+    expect(malAditivo.status).toBe(400);
+
+    await comoVol(request(app)).post('/api/ensayos')
+      .send({ tratamiento: 'D-C+aditivo biológico', prueba: 'proteccionTermica', valor: 7.5 }).expect(201);
+    const catalogos = await comoVol(request(app)).get('/api/catalogos');
+    expect(catalogos.body.data.roles).toEqual(['admin', 'municipio', 'brigadista', 'voluntario']);
+  });
+
+  test('exportar CSV y GeoJSON (solo admin, municipio o brigadista)', async () => {
+    await comoVol(request(app).get('/api/exportar/zonas-poda.geojson')).expect(403);
+
+    const geo = await comoAdmin(request(app).get('/api/exportar/zonas-poda.geojson')).expect(200);
+    const fc = JSON.parse(geo.text);
+    expect(fc.type).toBe('FeatureCollection');
+    expect(fc.features[0].geometry.type).toBe('Polygon'); // círculo de la zona
+    expect(fc.features[0].properties.nombre).toBeDefined();
+
+    const puntos = JSON.parse((await comoAdmin(request(app).get('/api/exportar/puntos-acopio.geojson'))).text);
+    expect(puntos.features[0].geometry.type).toBe('Point');
+
+    // Con ?token= (para descargar desde el navegador)
+    const csv = await request(app).get(`/api/exportar/especies.csv?token=${admin.token}`);
+    expect(csv.status).toBe(404); // especies no es exportable…
+    const csvZonas = await request(app).get(`/api/exportar/zonas-poda.csv?token=${admin.token}`).expect(200);
+    expect(csvZonas.headers['content-type']).toMatch(/text\/csv/);
+    expect(csvZonas.text).toMatch(/^﻿id,nombre/);
+
+    await comoAdmin(request(app).get('/api/exportar/lotes.geojson')).expect(400);
+    // El token por query solo vale para exportar
+    await request(app).get(`/api/stats?token=${admin.token}`).expect(401);
+  });
+
+  test('catálogos editables: admin agrega/edita/borra; no se borra lo que está en uso', async () => {
+    // Voluntario no puede modificar catálogos
+    await comoVol(request(app).post('/api/tratamientos').send({ nombre: 'E – Arcilla + aserrín' })).expect(403);
+
+    // Nuevo tratamiento con id derivado del nombre
+    const t = await comoAdmin(request(app).post('/api/tratamientos').send({ nombre: 'E – Arcilla + aserrín' })).expect(201);
+    expect(t.body.data.id).toBe('e-arcilla-aserrin');
+
+    // Nueva prueba directa y su uso en un ensayo
+    const p = await comoAdmin(request(app).post('/api/pruebas').send({ nombre: 'Diámetro', unidad: 'mm' })).expect(201);
+    const ensayo = await comoVol(request(app).post('/api/ensayos'))
+      .send({ tratamiento: t.body.data.id, prueba: p.body.data.id, valor: 24 }).expect(201);
+    expect(ensayo.body.data.unidad).toBe('mm');
+
+    // Editar el nombre sí; borrar estando en uso no
+    await comoAdmin(request(app).put(`/api/tratamientos/${t.body.data.id}`).send({ nombre: 'E – Arcilla + aserrín fino' })).expect(200);
+    const bloqueado = await comoAdmin(request(app).delete(`/api/tratamientos/${t.body.data.id}`));
+    expect(bloqueado.status).toBe(409);
+    expect(bloqueado.body.error).toMatch(/1 ensayo/);
+
+    // Aditivo nuevo usable en lotes; tipo de material nuevo usable en entregas
+    const ad = await comoAdmin(request(app).post('/api/aditivos').send({ nombre: 'Trichoderma' })).expect(201);
+    await comoVol(request(app).post('/api/lotes')).send({
+      especieId: 'mezquite', cantidad: 10, arcillaPct: 50, compostPct: 30, ficusPct: 20, aditivos: [ad.body.data.id],
+    }).expect(201);
+    const tm = await comoAdmin(request(app).post('/api/tipos-material').send({ nombre: 'Corteza' })).expect(201);
+    await comoVol(request(app).post('/api/entregas-poda')).send({ puntoId: 'plaza-jiquilpan', kg: 2, tipoMaterial: tm.body.data.id }).expect(201);
+
+    // Un catálogo sin uso sí se borra
+    const libre = await comoAdmin(request(app).post('/api/aditivos').send({ nombre: 'Sin usar' })).expect(201);
+    await comoAdmin(request(app).delete(`/api/aditivos/${libre.body.data.id}`)).expect(200);
+
+    // Especie en uso no se borra; especie nueva se edita
+    await comoAdmin(request(app).delete('/api/especies/mezquite')).expect(409);
+    const esp = await comoAdmin(request(app).post('/api/especies').send({ nombreComun: 'Fresno', nombreCientifico: 'Fraxinus uhdei' })).expect(201);
+    await comoAdmin(request(app).put(`/api/especies/${esp.body.data.id}`).send({ validada: true })).expect(200);
+
+    const cat = await comoVol(request(app)).get('/api/catalogos');
+    expect(cat.body.data.tratamientos.map(x => x.id)).toContain('e-arcilla-aserrin');
+    expect(cat.body.data.pruebas.find(x => x.id === 'retencionAgua').calculada).toBe(true);
+  });
+
+  test('ruta sugerida ordena solicitudes por cercanía y termina en el punto de acopio', async () => {
+    const crear = (direccion, lat, lng) => comoVol(request(app)).post('/api/solicitudes')
+      .send({ nombre: 'Vecino', direccion, lat, lng, kgEstimados: 10 }).expect(201);
+    await crear('Lejos', 20.05, -102.72);
+    await crear('Cerca', 19.991, -102.718);
+    await crear('Medio', 20.0, -102.72);
+
+    const r = await comoVol(request(app)).get('/api/ruta?lat=19.99&lng=-102.719&puntoId=plaza-sahuayo').expect(200);
+    expect(r.body.data.paradas.map(p => p.nombre)).toEqual(['Cerca', 'Medio', 'Lejos', 'Plaza principal de Sahuayo']);
+    expect(r.body.data.totalKm).toBeGreaterThan(0);
+    expect(r.body.data.googleMapsUrl).toMatch(/^https:\/\/www\.google\.com\/maps\/dir\//);
+
+    await comoVol(request(app)).get('/api/ruta').expect(400);
+  });
 });

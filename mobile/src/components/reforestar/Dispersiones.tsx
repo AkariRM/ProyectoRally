@@ -1,25 +1,28 @@
 import { useState } from 'react';
-import { Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { api } from '@/lib/api';
+import { alerta } from '@/lib/alerta';
 import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
-import { useUsuario } from '@/lib/usuario';
 import type { Municipio } from '@/lib/types';
-import { Aviso, Boton, Campo, colores, fecha, Opciones, Pantalla, Seccion, Tarjeta } from '@/components/ui';
-import { alerta } from '@/lib/alerta';
+import Mapa from '@/components/Mapa';
+import { Aviso, Boton, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
 
 const MUNICIPIOS: Municipio[] = ['Jiquilpan', 'Sahuayo', 'Otro'];
 
-export default function Dispersar() {
-  const { usuario } = useUsuario();
+// Registrar dónde se lanzaron píldoras (de preferencia dentro de un área a reforestar)
+export default function Dispersiones() {
   const { data, error, recargar } = useData(async () => {
-    const [lotes, especies, dispersiones] = await Promise.all([api.lotes(), api.especies(), api.dispersiones()]);
-    return { lotes, especies, dispersiones };
+    const [lotes, especies, dispersiones, areas] = await Promise.all([
+      api.lotes(), api.especies(), api.dispersiones(), api.areas(),
+    ]);
+    return { lotes, especies, dispersiones, areas };
   });
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [buscandoGps, setBuscandoGps] = useState(false);
+  const [areaId, setAreaId] = useState<string | null>(null);
   const [zona, setZona] = useState('');
   const [municipio, setMunicipio] = useState<Municipio | null>('Jiquilpan');
   const [loteId, setLoteId] = useState<string | null>(null);
@@ -30,8 +33,11 @@ export default function Dispersar() {
 
   const especies = data?.especies ?? [];
   const lotes = data?.lotes ?? [];
+  const areas = data?.areas ?? [];
   const nombreEspecie = Object.fromEntries(especies.map(e => [e.id, e.nombreComun]));
   const nombreLote = Object.fromEntries(lotes.map(l => [l.id, `${l.codigo} · ${nombreEspecie[l.especieId] ?? ''}`]));
+  const nombreArea = Object.fromEntries(areas.map(a => [a.id, a.nombre]));
+  const area = areas.find(a => a.id === areaId);
 
   const tomarUbicacion = async () => {
     setBuscandoGps(true);
@@ -40,25 +46,36 @@ export default function Dispersar() {
     setBuscandoGps(false);
   };
 
+  const elegirArea = (id: string) => {
+    const a = areas.find(x => x.id === id);
+    setAreaId(id);
+    if (a) {
+      setZona(a.nombre);
+      if (a.municipio) setMunicipio(a.municipio);
+    }
+  };
+
   const elegirLote = (id: string) => {
     setLoteId(id);
     setEspecieId(null);
   };
 
   const enviar = async () => {
-    if (!coords) return alerta('Falta ubicación', 'Toca "Tomar mi ubicación" primero.');
+    // Sin GPS se usa el centro del área elegida
+    const ubicacion = coords ?? (area ? { lat: area.lat, lng: area.lng } : null);
+    if (!ubicacion) return alerta('Falta ubicación', 'Toca "Tomar mi ubicación" o elige un área.');
     setEnviando(true);
     try {
       await api.crearDispersion({
-        lat: coords.lat,
-        lng: coords.lng,
+        lat: ubicacion.lat,
+        lng: ubicacion.lng,
         zona,
+        areaId: areaId ?? undefined,
         municipio: municipio ?? undefined,
         loteId: loteId ?? undefined,
         especieId: especieId ?? undefined,
         cantidad: Number(cantidad),
         notas,
-        usuarioId: usuario?.id,
       });
       setCantidad('');
       setNotas('');
@@ -72,12 +89,20 @@ export default function Dispersar() {
   };
 
   return (
-    <Pantalla titulo="Dispersar píldoras 🌱" subtitulo="Registra dónde lanzaste las píldoras para darles seguimiento">
+    <>
       {error ? <Aviso texto={error} /> : null}
+      <Mapa
+        puntos={(data?.dispersiones ?? []).map(d => ({
+          id: d.id, lat: d.lat, lng: d.lng, titulo: d.zona, descripcion: `${d.cantidad} píldoras`, color: 'green',
+        }))}
+      />
 
       <Seccion>Nueva dispersión</Seccion>
+      {areas.length ? (
+        <Opciones etiqueta="Área a reforestar" opciones={areas.map(a => a.id)} nombres={nombreArea} valor={areaId} onChange={elegirArea} />
+      ) : null}
       <Boton
-        texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : '📍 Tomar mi ubicación'}
+        texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : area ? '📍 Tomar mi ubicación (si no, se usa el centro del área)' : '📍 Tomar mi ubicación'}
         onPress={tomarUbicacion}
         cargando={buscandoGps}
         secundario={!!coords}
@@ -95,19 +120,20 @@ export default function Dispersar() {
       <Boton texto="Registrar dispersión" onPress={enviar} cargando={enviando} />
 
       {data?.dispersiones.length ? <Seccion>Dispersiones registradas</Seccion> : null}
-      <Text style={styles.ayuda}>Toca una dispersión para registrar su seguimiento.</Text>
+      {data?.dispersiones.length ? <Text style={styles.ayuda}>Toca una dispersión para registrar su seguimiento.</Text> : null}
       {[...(data?.dispersiones ?? [])].reverse().map(d => (
         <TouchableOpacity key={d.id} onPress={() => router.push({ pathname: '/seguimiento/[id]', params: { id: d.id } })}>
           <Tarjeta>
             <Text style={styles.nombre}>{d.zona}</Text>
             <Text style={styles.detalle}>
               {d.cantidad} píldoras · {nombreEspecie[d.especieId ?? ''] ?? 'sin especie'} · {fecha(d.creadoEn)}
+              {d.areaId ? ` · área: ${nombreArea[d.areaId] ?? '—'}` : ''}
             </Text>
             <Text style={styles.link}>Registrar seguimiento ›</Text>
           </Tarjeta>
         </TouchableOpacity>
       ))}
-    </Pantalla>
+    </>
   );
 }
 

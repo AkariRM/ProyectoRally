@@ -50,6 +50,8 @@ router.put('/:id/estado', requiereUsuario, (req, res) => {
       kg: data.kgReales,
       usuarioId: data.recolectorId || solicitud.recolectorId || undefined,
       solicitudId: solicitud.id,
+      tipoMaterial: solicitud.tipoMaterial,
+      especieArbol: solicitud.especieArbol,
       notas: `Recolección en ${solicitud.direccion}`,
     });
     Object.assign(cambios, { kgReales: data.kgReales, puntoId: data.puntoId, entregaId: entrega.id });
@@ -69,6 +71,8 @@ router.use(
       lat: { type: 'number', required: true, min: -90, max: 90 },
       lng: { type: 'number', required: true, min: -180, max: 180 },
       kgEstimados: { type: 'number', min: 0.1 },
+      tipoMaterial: { type: 'string', ref: 'tiposMaterial' },
+      especieArbol: { type: 'string' },
       estado: { type: 'enum', values: ESTADOS },
       usuarioId: { type: 'string', ref: 'usuarios' },
       notas: { type: 'string' },

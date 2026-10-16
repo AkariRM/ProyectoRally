@@ -27,18 +27,45 @@ asegurarAdmin();
 
 // Rutas
 app.use('/api/especies', require('./routes/especies'));
+const { routers: catalogos } = require('./lib/catalogos');
+app.use('/api/tratamientos', catalogos.tratamientos);
+app.use('/api/pruebas', catalogos.pruebas);
+app.use('/api/aditivos', catalogos.aditivos);
+app.use('/api/tipos-material', catalogos.tiposMaterial);
 app.use('/api/puntos-acopio', require('./routes/puntosAcopio'));
 app.use('/api/entregas-poda', require('./routes/entregasPoda'));
 app.use('/api/procesos-biomasa', require('./routes/procesosBiomasa'));
 app.use('/api/solicitudes', require('./routes/solicitudes'));
 app.use('/api/zonas-poda', require('./routes/zonasPoda'));
 app.use('/api/jornadas', require('./routes/jornadas'));
+app.use('/api/areas-reforestacion', require('./routes/areasReforestacion'));
+app.use('/api/jornadas-reforestacion', require('./routes/jornadasReforestacion'));
 app.use('/api/lotes', require('./routes/lotes'));
 app.use('/api/dispersiones', require('./routes/dispersiones'));
 app.use('/api/seguimientos', require('./routes/seguimientos'));
 app.use('/api/ensayos', require('./routes/ensayos'));
 app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/stats', require('./routes/stats'));
+app.use('/api/exportar', require('./routes/exportar'));
+app.use('/api/ruta', require('./routes/ruta'));
+
+// Catálogos para los formularios de la app
+app.get('/api/catalogos', (req, res) => {
+  const { RIESGOS, ESTADOS } = require('./routes/areasReforestacion');
+  const { ROLES } = require('./lib/auth');
+  res.json({
+    success: true,
+    data: {
+      tiposMaterial: db.list('tiposMaterial'),
+      aditivos: db.list('aditivos'),
+      tratamientos: db.list('tratamientos'),
+      pruebas: db.list('pruebas'),
+      riesgos: RIESGOS,
+      estadosArea: ESTADOS,
+      roles: ROLES,
+    },
+  });
+});
 
 // Borra todos los datos y vuelve a los datos iniciales (solo admin, no en producción)
 app.post('/api/admin/reset', requiereAdmin, (req, res) => {
@@ -52,7 +79,7 @@ app.post('/api/admin/reset', requiereAdmin, (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
-    proyecto: 'Píldoras Bióticas con Ficus benjamina',
+    proyecto: 'Bio Red — Píldoras bióticas con poda urbana',
     version: '2.0.0',
   });
 });
@@ -71,7 +98,7 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   // 0.0.0.0 para que el celular en la misma red Wi-Fi pueda conectarse
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🌱 API Píldoras Bióticas en http://localhost:${PORT}`);
+    console.log(`🌱 API Bio Red en http://localhost:${PORT}`);
   });
 }
 

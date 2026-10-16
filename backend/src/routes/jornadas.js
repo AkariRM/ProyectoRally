@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../lib/db');
 const { crudRouter, validate } = require('../lib/crud');
 const { fechaLocal, validarHora, validarFecha } = require('../lib/fechas');
-const { requiereUsuario } = require('../lib/auth');
+const { requiereUsuario, tieneRol } = require('../lib/auth');
 
 // Jornadas de poda: un día y horario concretos en que se poda una zona.
 // Los voluntarios se apuntan, recolectan la biomasa y la llevan al punto destino.
@@ -46,12 +46,14 @@ router.put('/:id/estado', requiereUsuario, (req, res) => {
     {
       estado: { type: 'enum', required: true, values: ['recolectada', 'cancelada'] },
       kgRecolectados: { type: 'number', min: 0.1 },
+      tipoMaterial: { type: 'string', ref: 'tiposMaterial' },
+      especieArbol: { type: 'string' },
       puntoDestinoId: { type: 'string', ref: 'puntosAcopio' },
     },
     req.body,
   );
   data.usuarioId = req.usuario.id;
-  if (data.estado === 'cancelada' && req.usuario.rol !== 'admin') errores.push('solo un administrador puede cancelar');
+  if (data.estado === 'cancelada' && !tieneRol(req.usuario, ['municipio'])) errores.push('solo admin o municipio puede cancelar');
   if (jornada.estado !== 'programada') errores.push(`la jornada ya está ${jornada.estado}`);
   const puntoId = data.puntoDestinoId || jornada.puntoDestinoId;
   if (data.estado === 'recolectada' && (!data.kgRecolectados || !puntoId)) {
@@ -67,9 +69,13 @@ router.put('/:id/estado', requiereUsuario, (req, res) => {
       kg: data.kgRecolectados,
       usuarioId: data.usuarioId,
       jornadaId: jornada.id,
+      tipoMaterial: data.tipoMaterial,
+      especieArbol: data.especieArbol,
       notas: `Jornada de poda ${zona ? zona.nombre : ''} ${jornada.fecha}`.trim(),
     });
-    Object.assign(cambios, { kgRecolectados: data.kgRecolectados, puntoDestinoId: puntoId, entregaId: entrega.id });
+    Object.assign(cambios, {
+      kgRecolectados: data.kgRecolectados, tipoMaterial: data.tipoMaterial, puntoDestinoId: puntoId, entregaId: entrega.id,
+    });
   }
   res.json({ success: true, data: db.update('jornadas', jornada.id, cambios) });
 });
@@ -93,7 +99,7 @@ router.use(
         ...validarHora('horaInicio', data.horaInicio),
         ...validarHora('horaFin', data.horaFin),
       ],
-      soloAdmin: true,
+      roles: ['municipio'],
       // Hereda horario y destino de la zona si no se indican
       beforeCreate: data => {
         const zona = db.get('zonasPoda', data.zonaId);

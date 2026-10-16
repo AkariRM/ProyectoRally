@@ -5,7 +5,7 @@
 
 const express = require('express');
 const db = require('./db');
-const { requiereUsuario, requiereAdmin } = require('./auth');
+const { requiereUsuario, requiereAdmin, requiereRol } = require('./auth');
 
 function validate(schema, body, { partial = false } = {}) {
   const errores = [];
@@ -47,11 +47,15 @@ function validate(schema, body, { partial = false } = {}) {
   return { errores, data };
 }
 
-// Permisos: leer es público; crear requiere sesión (o admin si hooks.soloAdmin);
-// editar y borrar siempre requieren admin. usuarioId se toma de la sesión.
+// Permisos (la API ya exige sesión para leer):
+//  - crear: cualquier usuario; hooks.roles = ['municipio'] lo limita a admin + esos roles;
+//    hooks.soloAdmin lo limita a admin
+//  - editar: admin o hooks.roles; borrar: solo admin
+// usuarioId se toma de la sesión.
 function crudRouter(collection, schema, hooks = {}) {
   const router = express.Router();
-  const puedeCrear = hooks.soloAdmin ? requiereAdmin : requiereUsuario;
+  const gestor = hooks.soloAdmin ? requiereAdmin : hooks.roles ? requiereRol(...hooks.roles) : requiereUsuario;
+  const editor = hooks.roles ? requiereRol(...hooks.roles) : requiereAdmin;
 
   router.get('/', (req, res) => {
     let items = db.list(collection);
@@ -68,7 +72,7 @@ function crudRouter(collection, schema, hooks = {}) {
     res.json({ success: true, data: item });
   });
 
-  router.post('/', puedeCrear, (req, res) => {
+  router.post('/', gestor, (req, res) => {
     const body = schema.usuarioId ? { ...req.body, usuarioId: req.usuario.id } : req.body;
     const { errores, data } = validate(schema, body);
     if (hooks.validate) errores.push(...hooks.validate(data));
@@ -77,7 +81,7 @@ function crudRouter(collection, schema, hooks = {}) {
     res.status(201).json({ success: true, data: db.insert(collection, final) });
   });
 
-  router.put('/:id', requiereAdmin, (req, res) => {
+  router.put('/:id', editor, (req, res) => {
     if (!db.get(collection, req.params.id)) return res.status(404).json({ error: 'No encontrado' });
     const { errores, data } = validate(schema, req.body, { partial: true });
     if (hooks.validate) errores.push(...hooks.validate({ ...db.get(collection, req.params.id), ...data }));

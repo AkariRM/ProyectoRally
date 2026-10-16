@@ -4,6 +4,7 @@ import {
   TouchableOpacity, View, ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useNavigation } from 'expo-router';
 
 export const colores = {
   verde: '#2E7D32',
@@ -22,10 +23,24 @@ export const colores = {
   borde: '#DDDDDD',
 };
 
-export function Pantalla({ titulo, subtitulo, children }: { titulo: string; subtitulo?: string; children: ReactNode }) {
+// Regresa a la pantalla anterior; si no hay historial, al dashboard
+function BotonAtras() {
+  const navigation = useNavigation();
+  const regresar = () => (navigation.canGoBack() ? navigation.goBack() : router.replace('/'));
+  return (
+    <TouchableOpacity onPress={regresar} style={styles.atras} hitSlop={10} accessibilityRole="button" accessibilityLabel="Regresar">
+      <Text style={styles.atrasTexto}>‹ Atrás</Text>
+    </TouchableOpacity>
+  );
+}
+
+export function Pantalla({ titulo, subtitulo, children, sinAtras }: {
+  titulo: string; subtitulo?: string; children: ReactNode; sinAtras?: boolean;
+}) {
   return (
     <SafeAreaView style={styles.pantalla} edges={['top']}>
       <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
+        {!sinAtras ? <BotonAtras /> : null}
         <Text style={styles.titulo}>{titulo}</Text>
         {subtitulo ? <Text style={styles.subtitulo}>{subtitulo}</Text> : null}
         {children}
@@ -205,6 +220,8 @@ const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: colores.fondo },
   contenido: { padding: 16, paddingBottom: 40 },
   titulo: { fontSize: 24, fontWeight: 'bold', color: colores.verde, marginTop: 4 },
+  atras: { alignSelf: 'flex-start', paddingVertical: 4, paddingRight: 12, marginBottom: 2 },
+  atrasTexto: { fontSize: 16, color: colores.verde, fontWeight: '600' },
   subtitulo: { fontSize: 13, color: colores.textoSuave, marginTop: 4, marginBottom: 16 },
   seccion: { fontSize: 16, fontWeight: '700', color: colores.texto, marginTop: 16, marginBottom: 10 },
   tarjeta: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
