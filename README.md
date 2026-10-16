@@ -1,112 +1,134 @@
-# ProyectoRally 🌿
+# Píldoras Bióticas con Ficus benjamina 🌱
 
-**Reutilización de Aceite Doméstico** — Reto 07
+Esferas de arcilla, compost y fibra de **Ficus benjamina** (residuo de poda urbana) con una semilla nativa al centro, para reforestar campos de **Jiquilpan y Sahuayo** sin necesidad de riego.
 
-Proyecto desarrollado por un equipo multidisciplinario de Sistemas, Arquitectura y Bioquímica.
+Proyecto multidisciplinario: **Ingeniería en Sistemas Computacionales**, **Ingeniería Bioquímica** y **Arquitectura**.
 
 ---
 
-## Estructura del Proyecto
+## Estructura
 
 ```
 ProyectoRally/
-├── backend/          → API REST en Node.js + Express
-│   └── src/
-│       ├── index.js
-│       ├── routes/
-│       ├── controllers/
-│       ├── models/
-│       └── middleware/
-└── mobile/           → App móvil en React Native (TypeScript)
+├── backend/            → API REST (Node.js + Express, datos en JSON)
+│   ├── src/
+│   │   ├── index.js
+│   │   ├── routes/     → un archivo por recurso
+│   │   ├── lib/        → almacenamiento (db.js) y fábrica CRUD con validación
+│   │   └── data/seed.js→ especies nativas y puntos de acopio iniciales
+│   └── tests/
+└── mobile/             → App móvil (Expo + Expo Router, TypeScript)
     └── src/
-        ├── screens/
-        ├── navigation/
-        ├── context/
-        ├── services/
-        ├── hooks/
-        └── utils/
+        ├── app/        → pantallas (cada archivo es una ruta)
+        ├── components/
+        └── lib/        → cliente de la API, tipos, usuario
 ```
 
 ---
 
-## Requisitos
+## Backend
 
-- Node.js 18+
-- npm 9+
-- React Native CLI
-- Android Studio o Xcode (para el emulador)
-
----
-
-## Cómo correr el backend
+Requisitos: Node.js 20+.
 
 ```bash
 cd backend
-cp .env.example .env        # configura tus variables de entorno
+cp .env.example .env
 npm install
-npm run dev                  # servidor en http://localhost:3000
+npm run dev        # http://localhost:3000
+npm test           # pruebas de la API
 ```
 
-### Endpoints disponibles
+Los datos se guardan en `backend/data/db.json` (se crea solo, no se sube a git).
+`POST /api/admin/reset` borra todo y regresa a los datos iniciales.
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/` | Estado de la API |
-| GET | `/api/puntos-acopio` | Listar puntos de acopio |
-| POST | `/api/puntos-acopio` | Crear punto de acopio |
-| GET | `/api/reportes` | Listar reportes |
-| POST | `/api/reportes` | Crear reporte de entrega |
-| GET | `/api/reportes/stats` | Estadísticas globales |
-| POST | `/api/usuarios/registro` | Registrar usuario |
-| POST | `/api/usuarios/login` | Iniciar sesión |
+### Endpoints
+
+| Recurso | Ruta | Descripción |
+|---|---|---|
+| Especies | `/api/especies` | Catálogo de especies nativas |
+| Puntos de acopio | `/api/puntos-acopio` | Dónde se recibe la poda de ficus |
+| Entregas de poda | `/api/entregas-poda` | Kg de poda fresca recibidos por punto |
+| Zonas de poda | `/api/zonas-poda`, `POST /:id/generar-jornadas` | Dónde se poda ficus, días/horario y punto destino |
+| Jornadas | `/api/jornadas/proximas`, `POST /:id/apuntarme`, `PUT /:id/estado` | Poda en fecha concreta; al marcarla recolectada crea la entrega en el punto destino |
+| Solicitudes | `/api/solicitudes`, `PUT /:id/estado` | Recolección a domicilio con GPS: pendiente → asignada → recolectada |
+| Biomasa | `/api/procesos-biomasa`, `/api/procesos-biomasa/inventario` | Secado y triturado; inventario fresca → seca → triturada → usada |
+| Lotes | `/api/lotes` | Producción: especie, cantidad, mezcla y kg de ficus usado (se descuenta del inventario) |
+| Dispersiones | `/api/dispersiones` | Dónde (GPS) y cuántas píldoras se lanzaron |
+| Seguimientos | `/api/seguimientos?dispersionId=` | Plántulas germinadas y vivas por revisión |
+| Ensayos | `/api/ensayos`, `/api/ensayos/catalogo` | Mediciones de laboratorio por tratamiento |
+| Usuarios | `/api/usuarios/registro`, `/api/usuarios/login` | Registro sencillo (sin contraseña) |
+| Estadísticas | `/api/stats` | Totales, por especie, por zona y promedios de ensayos |
+
+Todos los recursos CRUD aceptan `GET /`, `GET /:id`, `POST /`, `PUT /:id` y `DELETE /:id`.
 
 ---
 
-## Cómo correr la app móvil
+## App móvil
 
 ```bash
 cd mobile
 npm install
-npx react-native start         # Metro bundler
-npx react-native run-android   # en Android
-npx react-native run-ios       # en iOS
+npx expo start
 ```
+
+Escanea el código QR con **Expo Go** (Android/iOS). El celular y la computadora deben estar en la **misma red Wi-Fi**; la app busca el backend en la IP de la computadora, puerto 3000.
+Para otra URL, crea `mobile/.env` con `EXPO_PUBLIC_API_URL=http://<ip>:3000/api`.
+
+| Pantalla | Qué hace |
+|---|---|
+| **Inicio** | Registro, avance del proyecto y cómo funciona |
+| **Acopio → Zonas de poda** | Mapa de zonas, días y horario de poda, jornadas próximas, "Me apunto", registrar kg recolectados y punto destino, **avisos en el celular** |
+| **Acopio → Solicitudes** | Pedir recolección de poda con GPS; voluntarios la toman, abren la ruta y la cierran con los kg reales |
+| **Acopio → Puntos** | Puntos de acopio y entregas directas de poda fresca |
+| **Acopio → Biomasa** | Inventario fresca → seca → triturada → en lotes; registrar secado y triturado |
+| **Dispersar** | Registrar dispersión con GPS, lote/especie y cantidad; abrir seguimiento |
+| **Seguimiento** | Contar plántulas germinadas y vivas a las 2, 4 y 8 semanas |
+| **Laboratorio** | Crear lotes (mezcla) y capturar ensayos con calculadora por pesadas |
+| **Impacto** | Estadísticas comunitarias por especie y zona |
 
 ---
 
-## Pantallas de la app
+## Avisos de poda
 
-| Pantalla | Descripción |
-|----------|-------------|
-| **Inicio** | Panel con estadísticas personales y accesos rápidos |
-| **Mapa** | Lista de puntos de acopio (+ mapa cuando esté configurado) |
-| **Reportar** | Formulario para registrar una entrega de aceite |
-| **Estadísticas** | Impacto individual y comunitario |
-| **Perfil** | Puntos, nivel e insignias del usuario |
+Los avisos son **notificaciones locales** (las programa el propio celular, no se necesita servidor de push y funcionan en Expo Go). En **Acopio → Zonas de poda** toca **🔔 Avisarme** en una zona: llegará un aviso **el día anterior a las 19:00** y **1 hora antes** de cada jornada programada de esa zona.
+
+Las jornadas se crean con **Generar jornadas** (según los días de poda de la zona, 4 semanas) o como **jornada puntual**. Los horarios de las zonas incluidas son **de ejemplo**: hay que pedir los reales a Servicios Públicos de Jiquilpan y Sahuayo.
+
+## Ensayos (sin sensores)
+
+Todo se mide con báscula de cocina (0.1 g), regla, vaso y cronómetro. Se comparan 3 tratamientos:
+
+- **A** – arcilla
+- **B** – arcilla + compost
+- **C** – arcilla + compost + ficus
+
+| Prueba | Cómo | Unidad |
+|---|---|---|
+| Retención de agua | (peso mojado − seco) / seco × 100 | % |
+| Pérdida de agua 24 h | agua perdida en 24 h a la sombra / agua absorbida × 100 | % |
+| Germinación | germinadas / sembradas × 100 | % |
+| Grietas al secar | conteo visual | num |
+| Resistencia a caída | caídas desde 1 m sin romperse | num |
+| Desintegración en agua | minutos hasta deshacerse | min |
+| Tiempo de secado | horas hasta peso constante | h |
 
 ---
 
 ## Rol de cada carrera
 
-| Carrera | Área en el proyecto |
-|---------|---------------------|
-| **Bioquímica** | Proceso de filtrado y conversión (biodiésel / jabón), criterios de calidad |
-| **Arquitectura** | Diseño de eco-estaciones físicas, mapa de ubicación, centro de procesamiento |
-| **Sistemas** | App móvil, API REST, mapa interactivo, gamificación (puntos) |
+| Carrera | Área |
+|---|---|
+| **Bioquímica** | Caracterización de ficus, arcilla y compost; pruebas de alelopatía; formulación de la mezcla; viabilidad de semillas |
+| **Arquitectura** | Taller de producción y secadero, moldes, puntos de acopio, plan de reforestación, imagen del proyecto |
+| **Sistemas** | App móvil, API, mapas, registro de datos y estadísticas |
 
 ---
 
-## Impacto
+## Pendiente
 
-> 1 litro de aceite doméstico contamina **40,000 litros de agua**.
-> Con este proyecto, cada litro recolectado se convierte en una acción medible.
-
----
-
-## Próximos pasos
-
-- [ ] Integrar MongoDB para persistencia de datos
-- [ ] Configurar `react-native-maps` con puntos reales
-- [ ] Añadir autenticación JWT
-- [ ] Módulo de biodiésel: cálculo de rendimiento por lote
-- [ ] Panel web para administradores de eco-estaciones
+- [ ] Validar el catálogo de especies nativas (Bioquímica)
+- [ ] Coordenadas reales de los puntos de acopio y zonas de poda
+- [ ] Horarios reales de poda (Servicios Públicos)
+- [ ] Autenticación real (contraseña / JWT)
+- [ ] Modo sin conexión para registrar en campo sin señal
+- [ ] Publicar el backend en un servidor para usarlo fuera de la red local

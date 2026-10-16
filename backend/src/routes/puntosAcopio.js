@@ -1,17 +1,11 @@
-const express = require('express');
-const router = express.Router();
-const ctrl = require('../controllers/puntosAcopioController');
+const { crudRouter } = require('../lib/crud');
 
-// GET  /api/puntos-acopio       → listar todos
-// POST /api/puntos-acopio       → crear nuevo punto
-// GET  /api/puntos-acopio/:id   → obtener uno
-// PUT  /api/puntos-acopio/:id   → actualizar
-// DELETE /api/puntos-acopio/:id → eliminar
-
-router.get('/', ctrl.getAll);
-router.post('/', ctrl.create);
-router.get('/:id', ctrl.getOne);
-router.put('/:id', ctrl.update);
-router.delete('/:id', ctrl.remove);
-
-module.exports = router;
+// Lugares donde se recibe la poda de Ficus benjamina
+module.exports = crudRouter('puntosAcopio', {
+  nombre: { type: 'string', required: true },
+  direccion: { type: 'string', required: true },
+  municipio: { type: 'enum', values: ['Jiquilpan', 'Sahuayo', 'Otro'] },
+  lat: { type: 'number', min: -90, max: 90 },
+  lng: { type: 'number', min: -180, max: 180 },
+  tipo: { type: 'enum', values: ['parque', 'plaza', 'escuela', 'vivero', 'domicilio', 'otro'] },
+});

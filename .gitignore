@@ -11,3 +11,6 @@ mobile/.expo/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Datos locales del backend
+backend/data/
