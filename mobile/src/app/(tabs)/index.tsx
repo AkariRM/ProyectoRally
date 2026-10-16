@@ -1,10 +1,9 @@
-import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { api, BASE_URL } from '@/lib/api';
 import { useData } from '@/lib/useData';
-import { useUsuario } from '@/lib/usuario';
-import { NOMBRE_ROL } from '@/lib/catalogos';
-import { Aviso, Boton, colores, Dato, Fila, Pantalla, Seccion, Tarjeta } from '@/components/ui';
+import MenuUsuario from '@/components/MenuUsuario';
+import { ANCHO_ESCRITORIO, Aviso, Boton, colores, Dato, Pantalla, Seccion, Tarjeta } from '@/components/ui';
 
 // Proceso artesanal del documento de la problemática
 const PASOS = [
@@ -17,72 +16,79 @@ const PASOS = [
 ];
 
 export default function Inicio() {
-  const { usuario, esAdmin, salir } = useUsuario();
   const { data: stats, error } = useData(api.stats);
+  // Celular: 2 datos por fila y todo en una columna · Escritorio: cuadrícula más ancha
+  const escritorio = useWindowDimensions().width >= ANCHO_ESCRITORIO;
+
+  const datos = [
+    { valor: `${stats?.kgPodaRecibida ?? 0} kg`, etiqueta: 'Poda de ficus recolectada', color: colores.tierraClaro },
+    { valor: stats?.pildorasProducidas ?? 0, etiqueta: 'Píldoras producidas', color: colores.ambarClaro },
+    { valor: stats?.pildoras ?? 0, etiqueta: 'Píldoras dispersadas', color: colores.verdeClaro },
+    { valor: stats?.vivas ?? 0, etiqueta: 'Plántulas vivas', color: colores.azulClaro },
+    { valor: stats?.jornadasProximas ?? 0, etiqueta: 'Jornadas de poda próximas', color: colores.tierraClaro },
+    { valor: stats?.solicitudesPendientes ?? 0, etiqueta: 'Solicitudes por recoger', color: colores.rojoClaro },
+    { valor: `${stats?.biomasa.triturada ?? 0} kg`, etiqueta: 'Ficus triturado listo', color: colores.ambarClaro },
+  ];
 
   return (
-    <Pantalla sinAtras titulo="Avance del proyecto 🌱" subtitulo="Reforestación con poda de Ficus benjamina · Jiquilpan y Sahuayo">
+    <Pantalla
+      sinAtras
+      titulo="Avance del proyecto 🌱"
+      subtitulo="Reforestación con poda de Ficus benjamina · Jiquilpan y Sahuayo"
+      derecha={<MenuUsuario />}
+    >
       <Aviso
         tipo="info"
         texto="El problema: grandes volúmenes de biomasa vegetal urbana se tratan como desecho. Bio Red la convierte en píldoras bióticas para reforestar la Ciénega de Chapala sin riego artificial."
       />
-      {error ? <Aviso texto={`${error}\nServidor: ${BASE_URL}`} /> : null}
-
-      {usuario ? (
-        <Tarjeta style={styles.saludo}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.saludoTexto}>Hola, {usuario.email.split('@')[0]}</Text>
-            <Text style={styles.saludoCarrera}>{NOMBRE_ROL[usuario.rol] ?? usuario.rol} · {usuario.email}</Text>
-          </View>
-          <TouchableOpacity onPress={salir}>
-            <Text style={{ color: colores.textoSuave }}>Salir</Text>
-          </TouchableOpacity>
-        </Tarjeta>
-      ) : null}
-      {esAdmin ? (
-        <>
-          <Boton texto="⚙️  Administrar usuarios" color={colores.texto} secundario onPress={() => router.push('/admin')} />
-          <Boton texto="📚  Catálogos (especies, tratamientos, pruebas…)" color={colores.texto} secundario onPress={() => router.push('/catalogos')} />
-        </>
-      ) : null}
+      {error ? <Aviso texto={`${error}
+Servidor: ${BASE_URL}`} /> : null}
 
       <Seccion>Biomasa y producción</Seccion>
-      <Fila>
-        <Dato valor={`${stats?.kgPodaRecibida ?? 0} kg`} etiqueta="Poda de ficus recolectada" color={colores.tierraClaro} />
-        <Dato valor={stats?.pildorasProducidas ?? 0} etiqueta="Píldoras producidas" color={colores.ambarClaro} />
-      </Fila>
-      <Fila>
-        <Dato valor={stats?.pildoras ?? 0} etiqueta="Píldoras dispersadas" color={colores.verdeClaro} />
-        <Dato valor={stats?.vivas ?? 0} etiqueta="Plántulas vivas" color={colores.azulClaro} />
-      </Fila>
-
-      <Fila>
-        <Dato valor={stats?.jornadasProximas ?? 0} etiqueta="Jornadas de poda próximas" color={colores.tierraClaro} />
-        <Dato valor={stats?.solicitudesPendientes ?? 0} etiqueta="Solicitudes por recoger" color={colores.rojoClaro} />
-        <Dato valor={`${stats?.biomasa.triturada ?? 0} kg`} etiqueta="Ficus triturado listo" color={colores.ambarClaro} />
-      </Fila>
+      <View style={styles.cuadricula}>
+        {datos.map(d => (
+          <View key={d.etiqueta} style={[styles.celda, { flexBasis: escritorio ? '22%' : '45%' }]}>
+            <Dato valor={d.valor} etiqueta={d.etiqueta} color={d.color} />
+          </View>
+        ))}
+      </View>
 
       <Seccion>¿Qué quieres hacer?</Seccion>
-      <Boton texto="✂️  Ver jornadas de poda y recolectar" color={colores.tierra} onPress={() => router.navigate('/acopio')} />
-      <Boton texto="🌱  Reforestación: áreas, jornadas y dispersiones" onPress={() => router.navigate('/reforestar')} />
-      <Boton texto="🧪  Registrar lote o ensayo" color={colores.azul} onPress={() => router.navigate('/laboratorio')} />
+      <View style={escritorio ? styles.filaAcciones : undefined}>
+        <View style={escritorio ? styles.accion : undefined}>
+          <Boton texto="✂️  Ver jornadas de poda y recolectar" color={colores.tierra} onPress={() => router.navigate('/acopio')} />
+        </View>
+        <View style={escritorio ? styles.accion : undefined}>
+          <Boton texto="🌱  Reforestación: áreas, jornadas y dispersiones" onPress={() => router.navigate('/reforestar')} />
+        </View>
+        <View style={escritorio ? styles.accion : undefined}>
+          <Boton texto="🧪  Registrar lote o ensayo" color={colores.azul} onPress={() => router.navigate('/laboratorio')} />
+        </View>
+      </View>
 
       <Seccion>¿Cómo funciona?</Seccion>
-      {PASOS.map((p, i) => (
-        <Tarjeta key={i} style={styles.paso}>
-          <Text style={styles.pasoEmoji}>{p.emoji}</Text>
-          <Text style={styles.pasoTexto}>{p.texto}</Text>
-        </Tarjeta>
-      ))}
+      <View style={styles.cuadricula}>
+        {PASOS.map((p, i) => (
+          <View key={i} style={[styles.celda, { flexBasis: escritorio ? '30%' : '100%' }]}>
+            <Tarjeta style={[styles.paso, escritorio && { flex: 1 }]}>
+              <Text style={styles.pasoNumero}>{i + 1}</Text>
+              <Text style={styles.pasoEmoji}>{p.emoji}</Text>
+              <Text style={styles.pasoTexto}>{p.texto}</Text>
+            </Tarjeta>
+          </View>
+        ))}
+      </View>
     </Pantalla>
   );
 }
 
 const styles = StyleSheet.create({
-  saludo: { flexDirection: 'row', alignItems: 'center' },
-  saludoTexto: { fontSize: 17, fontWeight: '700', color: colores.texto },
-  saludoCarrera: { fontSize: 13, color: colores.verde, marginTop: 2 },
-  paso: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cuadricula: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  celda: { flexGrow: 1, display: 'flex' },
+  filaAcciones: { flexDirection: 'row', gap: 10 },
+  accion: { flex: 1 },
+  paso: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 0 },
+  pasoNumero: { fontSize: 12, fontWeight: '700', color: colores.verde, alignSelf: 'flex-start' },
   pasoEmoji: { fontSize: 24 },
   pasoTexto: { flex: 1, fontSize: 14, color: colores.texto, lineHeight: 20 },
 });

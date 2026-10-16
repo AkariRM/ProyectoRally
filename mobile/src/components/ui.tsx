@@ -34,16 +34,27 @@ function BotonAtras() {
   );
 }
 
-export function Pantalla({ titulo, subtitulo, children, sinAtras }: {
+// En pantallas anchas (navegador de escritorio) el contenido se centra con ancho máximo
+export const ANCHO_ESCRITORIO = 900;
+
+export function Pantalla({ titulo, subtitulo, children, sinAtras, derecha }: {
   titulo: string; subtitulo?: string; children: ReactNode; sinAtras?: boolean;
+  derecha?: ReactNode; // esquina superior derecha (ej. saludo y menú del usuario)
 }) {
   return (
     <SafeAreaView style={styles.pantalla} edges={['top']}>
       <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
-        {!sinAtras ? <BotonAtras /> : null}
-        <Text style={styles.titulo}>{titulo}</Text>
-        {subtitulo ? <Text style={styles.subtitulo}>{subtitulo}</Text> : null}
-        {children}
+        <View style={styles.centro}>
+          {!sinAtras ? <BotonAtras /> : null}
+          <View style={styles.cabecera}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.titulo}>{titulo}</Text>
+              {subtitulo ? <Text style={styles.subtitulo}>{subtitulo}</Text> : null}
+            </View>
+            {derecha}
+          </View>
+          {children}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -264,6 +275,8 @@ export const aYyyyMmDd = (d: Date) =>
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: colores.fondo },
   contenido: { padding: 16, paddingBottom: 40 },
+  centro: { width: '100%', maxWidth: 1200, alignSelf: 'center' },
+  cabecera: { flexDirection: 'row', alignItems: 'flex-start' },
   titulo: { fontSize: 24, fontWeight: 'bold', color: colores.verde, marginTop: 4 },
   atras: { alignSelf: 'flex-start', paddingVertical: 4, paddingRight: 12, marginBottom: 2 },
   atrasTexto: { fontSize: 16, color: colores.verde, fontWeight: '600' },
