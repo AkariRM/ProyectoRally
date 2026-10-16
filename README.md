@@ -40,7 +40,13 @@ npm run dev        # http://localhost:3000
 npm test           # pruebas de la API
 ```
 
-Los datos se guardan en `backend/data/db.json` (se crea solo, no se sube a git).
+Los datos se guardan en:
+
+- **PostgreSQL (Supabase)** si existe `DATABASE_URL` (producción en Render). Tabla `bio_red.documentos` (esquema propio, RLS activado): al arrancar se carga todo en memoria y cada cambio se guarda de inmediato. Las colecciones y datos iniciales se crean solos la primera vez.
+- **`backend/data/db.json`** si no hay `DATABASE_URL` (desarrollo y pruebas; se crea solo, no se sube a git).
+
+Usa una sola instancia del servidor por base de datos: no conectes tu PC y Render a la misma base al mismo tiempo.
+`npm run migrar` sube el contenido de `data/db.json` a la base de `DATABASE_URL` (**reemplaza** lo que haya allá).
 `POST /api/admin/reset` (solo admin) borra todo y regresa a los datos iniciales.
 
 ### Cuentas y administrador
@@ -166,4 +172,4 @@ Los tratamientos y las pruebas se pueden editar desde **Inicio → Catálogos** 
 - [ ] Coordenadas reales de los puntos de acopio y zonas de poda
 - [ ] Horarios reales de poda (Servicios Públicos)
 - [ ] Modo sin conexión para registrar en campo sin señal
-- [ ] Publicar el backend en un servidor para usarlo fuera de la red local
+- [x] Backend en Render con PostgreSQL (Supabase); app web en Netlify

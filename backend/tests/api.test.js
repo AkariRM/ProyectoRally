@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = ''; // usar archivo temporal aunque .env apunte a Supabase
 process.env.ADMIN_EMAIL = 'admin@test.mx';
 process.env.ADMIN_PASSWORD = 'admin123';
 process.env.DB_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'pildoras-')), 'db.json');

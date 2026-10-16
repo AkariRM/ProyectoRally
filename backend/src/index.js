@@ -28,8 +28,9 @@ app.use('/api', (req, res, next) => {
   res.status(401).json({ error: 'Inicia sesión para continuar' });
 });
 
-// Cuenta de administrador definida en .env (ADMIN_EMAIL / ADMIN_PASSWORD)
-asegurarAdmin();
+// Cuenta de administrador definida en .env (ADMIN_EMAIL / ADMIN_PASSWORD).
+// Con PostgreSQL se crea al arrancar, cuando ya se cargaron los datos (ver iniciar()).
+if (!db.usaPostgres()) asegurarAdmin();
 
 // Rutas
 app.use('/api/especies', require('./routes/especies'));
@@ -101,10 +102,23 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-if (require.main === module) {
+async function iniciar() {
+  await db.init();
+  asegurarAdmin();
   // 0.0.0.0 para que el celular en la misma red Wi-Fi pueda conectarse
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🌱 API Bio Red en http://localhost:${PORT}`);
+  const servidor = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🌱 API Bio Red en http://localhost:${PORT} (${db.usaPostgres() ? 'PostgreSQL' : 'archivo JSON'})`);
+  });
+  // Al detener el servidor (deploy, Ctrl+C) se terminan de guardar los cambios pendientes
+  const apagar = () => servidor.close(() => db.cerrar().finally(() => process.exit(0)));
+  process.on('SIGTERM', apagar);
+  process.on('SIGINT', apagar);
+}
+
+if (require.main === module) {
+  iniciar().catch(e => {
+    console.error('❌ No se pudo iniciar:', e.message);
+    process.exit(1);
   });
 }
 
