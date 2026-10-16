@@ -1,0 +1,13 @@
+# Node
+node_modules/
+*.log
+.env
+
+# React Native
+mobile/android/
+mobile/ios/
+mobile/.expo/
+
+# Sistema
+.DS_Store
+Thumbs.db
