@@ -8,3 +8,14 @@ export function alerta(titulo: string, mensaje?: string) {
     Alert.alert(titulo, mensaje);
   }
 }
+
+// Pide confirmación (ej. antes de eliminar). Devuelve true si el usuario acepta.
+export function confirmar(titulo: string, mensaje: string, textoAceptar = 'Eliminar'): Promise<boolean> {
+  if (Platform.OS === 'web') return Promise.resolve(window.confirm(`${titulo}\n\n${mensaje}`));
+  return new Promise(resolve =>
+    Alert.alert(titulo, mensaje, [
+      { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+      { text: textoAceptar, style: 'destructive', onPress: () => resolve(true) },
+    ]),
+  );
+}

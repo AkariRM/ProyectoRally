@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../lib/db');
 const { crudRouter } = require('../lib/crud');
 const { fechaLocal, validarHora } = require('../lib/fechas');
+const { requiereAdmin } = require('../lib/auth');
 
 // Zonas donde se poda Ficus benjamina (calles, plazas, parques).
 // diasSemana: 0 = domingo … 6 = sábado. A partir del horario se generan jornadas.
@@ -10,7 +11,7 @@ const router = express.Router();
 
 // POST /api/zonas-poda/:id/generar-jornadas  { semanas: 4 }
 // Crea las jornadas de las próximas semanas según los días de poda de la zona.
-router.post('/:id/generar-jornadas', (req, res) => {
+router.post('/:id/generar-jornadas', requiereAdmin, (req, res) => {
   const zona = db.get('zonasPoda', req.params.id);
   if (!zona) return res.status(404).json({ error: 'No encontrado' });
   if (!zona.diasSemana || !zona.diasSemana.length) {
@@ -69,7 +70,15 @@ router.use(
         errores.push(...validarHora('horaInicio', data.horaInicio), ...validarHora('horaFin', data.horaFin));
         return errores;
       },
+      soloAdmin: true,
       beforeCreate: data => ({ radioM: 150, diasSemana: [], ...data }),
+      // Al borrar una zona se borran sus jornadas aún programadas (se conserva el historial)
+      beforeDelete: zona => {
+        for (const j of db.list('jornadas').filter(j => j.zonaId === zona.id && j.estado === 'programada')) {
+          db.remove('jornadas', j.id);
+        }
+        return null;
+      },
     },
   ),
 );

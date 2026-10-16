@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const db = require('./lib/db');
+const { autenticar, asegurarAdmin, requiereAdmin } = require('./lib/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +13,17 @@ app.use(cors());
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(autenticar);
+
+// Toda la API requiere sesión, excepto registrarse e iniciar sesión
+const RUTAS_PUBLICAS = ['/usuarios/registro', '/usuarios/login'];
+app.use('/api', (req, res, next) => {
+  if (RUTAS_PUBLICAS.includes(req.path) || req.usuario) return next();
+  res.status(401).json({ error: 'Inicia sesión para continuar' });
+});
+
+// Cuenta de administrador definida en .env (ADMIN_EMAIL / ADMIN_PASSWORD)
+asegurarAdmin();
 
 // Rutas
 app.use('/api/especies', require('./routes/especies'));
@@ -28,10 +40,11 @@ app.use('/api/ensayos', require('./routes/ensayos'));
 app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/stats', require('./routes/stats'));
 
-// Borra todos los datos y vuelve a los datos iniciales (solo en desarrollo)
-app.post('/api/admin/reset', (req, res) => {
+// Borra todos los datos y vuelve a los datos iniciales (solo admin, no en producción)
+app.post('/api/admin/reset', requiereAdmin, (req, res) => {
   if (process.env.NODE_ENV === 'production') return res.status(403).json({ error: 'No permitido' });
   db.reset();
+  asegurarAdmin();
   res.json({ success: true });
 });
 

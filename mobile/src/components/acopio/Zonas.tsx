@@ -11,7 +11,7 @@ import {
   aYyyyMmDd, Aviso, Boton, BotonChico, Campo, colores, DIAS_SEMANA, fechaCorta,
   Opciones, OpcionesMultiples, Seccion, Tarjeta,
 } from '@/components/ui';
-import { alerta } from '@/lib/alerta';
+import { alerta, confirmar } from '@/lib/alerta';
 
 const MUNICIPIOS: Municipio[] = ['Jiquilpan', 'Sahuayo', 'Otro'];
 const TIPOS = ['calle', 'plaza', 'parque', 'escuela', 'otro'] as const;
@@ -62,30 +62,35 @@ function RecoleccionJornada({ jornada, puntos, onListo }: {
   );
 }
 
-function NuevaZona({ puntos, onListo }: { puntos: { id: string; nombre: string }[]; onListo: () => void }) {
-  const { usuario } = useUsuario();
-  const [nombre, setNombre] = useState('');
-  const [municipio, setMunicipio] = useState<Municipio | null>('Jiquilpan');
-  const [tipo, setTipo] = useState<(typeof TIPOS)[number] | null>('calle');
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [radio, setRadio] = useState('150');
-  const [dias, setDias] = useState<number[]>([]);
-  const [horaInicio, setHoraInicio] = useState('08:00');
-  const [horaFin, setHoraFin] = useState('12:00');
-  const [responsable, setResponsable] = useState('');
-  const [destino, setDestino] = useState<string | null>(null);
+// Crear o editar una zona de poda (solo admin)
+function FormZona({ zona, puntos, onListo, onCancelar }: {
+  zona?: ZonaPoda; puntos: { id: string; nombre: string }[]; onListo: () => void; onCancelar: () => void;
+}) {
+  const [nombre, setNombre] = useState(zona?.nombre ?? '');
+  const [municipio, setMunicipio] = useState<Municipio | null>(zona?.municipio ?? 'Jiquilpan');
+  const [tipo, setTipo] = useState<(typeof TIPOS)[number] | null>(zona?.tipo ?? 'calle');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(zona ? { lat: zona.lat, lng: zona.lng } : null);
+  const [radio, setRadio] = useState(String(zona?.radioM ?? 150));
+  const [dias, setDias] = useState<number[]>(zona?.diasSemana ?? []);
+  const [horaInicio, setHoraInicio] = useState(zona?.horaInicio ?? '08:00');
+  const [horaFin, setHoraFin] = useState(zona?.horaFin ?? '12:00');
+  const [responsable, setResponsable] = useState(zona?.responsable ?? '');
+  const [destino, setDestino] = useState<string | null>(zona?.puntoDestinoId ?? null);
+  const [notas, setNotas] = useState(zona?.notas ?? '');
   const [enviando, setEnviando] = useState(false);
 
   const guardar = async () => {
     if (!coords) return alerta('Falta ubicación', 'Párate en la zona y toca "Tomar ubicación".');
     setEnviando(true);
+    const datos: Partial<ZonaPoda> = {
+      nombre, municipio: municipio ?? undefined, tipo: tipo ?? undefined, lat: coords.lat, lng: coords.lng,
+      radioM: Number(radio), diasSemana: dias, horaInicio, horaFin, responsable,
+      puntoDestinoId: destino ?? undefined, notas,
+    };
     try {
-      await api.crearZonaPoda({
-        nombre, municipio: municipio ?? undefined, tipo: tipo ?? undefined, lat: coords.lat, lng: coords.lng,
-        radioM: Number(radio), diasSemana: dias, horaInicio, horaFin, responsable,
-        puntoDestinoId: destino ?? undefined, usuarioId: usuario?.id,
-      } as Partial<ZonaPoda>);
-      alerta('Zona creada', 'Ahora puedes generar sus jornadas de poda.');
+      if (zona) await api.editarZonaPoda(zona.id, datos);
+      else await api.crearZonaPoda(datos);
+      alerta(zona ? 'Zona actualizada' : 'Zona creada', dias.length ? 'Ahora puedes generar sus jornadas de poda.' : '');
       onListo();
     } catch (e) {
       alerta('Error', (e as Error).message);
@@ -95,13 +100,17 @@ function NuevaZona({ puntos, onListo }: { puntos: { id: string; nombre: string }
   };
 
   return (
-    <Tarjeta>
+    <Tarjeta style={{ marginTop: 8 }}>
+      <Text style={styles.formTitulo}>{zona ? `Editar: ${zona.nombre}` : 'Nueva zona de poda'}</Text>
       <Campo etiqueta="Nombre de la zona" value={nombre} onChangeText={setNombre} placeholder="Ej: Av. Lázaro Cárdenas, tramo centro" />
       <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
       <Opciones etiqueta="Tipo" opciones={TIPOS} valor={tipo} onChange={setTipo} />
       <Boton
-        texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : '📍 Tomar ubicación (centro de la zona)'}
-        onPress={async () => setCoords(await obtenerUbicacion('marcar la zona de poda'))}
+        texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} · tocar para usar mi ubicación` : '📍 Tomar ubicación (centro de la zona)'}
+        onPress={async () => {
+          const c = await obtenerUbicacion('marcar la zona de poda');
+          if (c) setCoords(c);
+        }}
         secundario={!!coords}
       />
       <Campo etiqueta="Radio (metros)" value={radio} onChangeText={setRadio} keyboardType="number-pad" />
@@ -118,7 +127,9 @@ function NuevaZona({ puntos, onListo }: { puntos: { id: string; nombre: string }
         valor={destino}
         onChange={setDestino}
       />
-      <Boton texto="Guardar zona" onPress={guardar} cargando={enviando} />
+      <Campo etiqueta="Notas" value={notas} onChangeText={setNotas} multiline />
+      <Boton texto={zona ? 'Guardar cambios' : 'Guardar zona'} onPress={guardar} cargando={enviando} />
+      <Boton texto="Cancelar" onPress={onCancelar} secundario color={colores.textoSuave} />
     </Tarjeta>
   );
 }
@@ -160,7 +171,7 @@ function NuevaJornada({ zonas, onListo }: { zonas: ZonaPoda[]; onListo: () => vo
 }
 
 export default function Zonas() {
-  const { usuario } = useUsuario();
+  const { usuario, esAdmin } = useUsuario();
   const { data, error, recargar } = useData(async () => {
     const [zonas, jornadas, puntos] = await Promise.all([api.zonasPoda(), api.jornadasProximas(), api.puntosAcopio()]);
     return { zonas, jornadas, puntos };
@@ -169,6 +180,7 @@ export default function Zonas() {
   const [avisosProgramados, setAvisosProgramados] = useState<number | null>(null);
   const [recolectando, setRecolectando] = useState<string | null>(null);
   const [formulario, setFormulario] = useState<'zona' | 'jornada' | null>(null);
+  const [editandoZona, setEditandoZona] = useState<string | null>(null);
 
   useEffect(() => {
     zonasConAviso().then(setSuscritas);
@@ -201,7 +213,7 @@ export default function Zonas() {
   const apuntarme = async (j: Jornada) => {
     if (!usuario) return alerta('Regístrate', 'Regístrate en Inicio para apuntarte a una jornada.');
     try {
-      await api.apuntarmeJornada(j.id, usuario.id, j.voluntarios.includes(usuario.id));
+      await api.apuntarmeJornada(j.id, j.voluntarios.includes(usuario.id));
       recargar();
     } catch (e) {
       alerta('Error', (e as Error).message);
@@ -218,9 +230,20 @@ export default function Zonas() {
     }
   };
 
+  const eliminarZona = async (zona: ZonaPoda) => {
+    if (!(await confirmar('Eliminar zona', `¿Eliminar "${zona.nombre}" y sus jornadas programadas?`))) return;
+    try {
+      await api.eliminarZonaPoda(zona.id);
+      recargar();
+    } catch (e) {
+      alerta('Error', (e as Error).message);
+    }
+  };
+
   const terminar = () => {
     setRecolectando(null);
     setFormulario(null);
+    setEditandoZona(null);
     recargar();
   };
 
@@ -262,7 +285,9 @@ export default function Zonas() {
       })}
 
       <Seccion>Zonas de poda</Seccion>
-      {zonas.map(z => (
+      {zonas.map(z => editandoZona === z.id ? (
+        <FormZona key={z.id} zona={z} puntos={puntos} onListo={terminar} onCancelar={() => setEditandoZona(null)} />
+      ) : (
         <Tarjeta key={z.id}>
           <Text style={styles.nombre}>{z.nombre}</Text>
           <Text style={styles.detalle}>{horario(z)}</Text>
@@ -275,16 +300,24 @@ export default function Zonas() {
               relleno={suscritas.includes(z.id)}
               onPress={() => alternarAviso(z.id)}
             />
-            <BotonChico texto="Generar jornadas" color={colores.azul} onPress={() => generar(z)} />
+            {esAdmin ? (
+              <>
+                <BotonChico texto="✏️ Editar" onPress={() => setEditandoZona(z.id)} />
+                <BotonChico texto="Generar jornadas" color={colores.azul} onPress={() => generar(z)} />
+                <BotonChico texto="🗑️ Eliminar" color={colores.rojo} onPress={() => eliminarZona(z)} />
+              </>
+            ) : null}
           </View>
         </Tarjeta>
       ))}
 
+      {esAdmin ? (
       <View style={styles.acciones}>
         <BotonChico texto="+ Nueva zona" relleno={formulario === 'zona'} onPress={() => setFormulario(formulario === 'zona' ? null : 'zona')} />
         <BotonChico texto="+ Jornada puntual" relleno={formulario === 'jornada'} onPress={() => setFormulario(formulario === 'jornada' ? null : 'jornada')} />
       </View>
-      {formulario === 'zona' ? <NuevaZona puntos={puntos} onListo={terminar} /> : null}
+      ) : null}
+      {formulario === 'zona' ? <FormZona puntos={puntos} onListo={terminar} onCancelar={() => setFormulario(null)} /> : null}
       {formulario === 'jornada' ? <NuevaJornada zonas={zonas} onListo={terminar} /> : null}
     </>
   );
@@ -299,4 +332,5 @@ const styles = StyleSheet.create({
   acciones: { flexDirection: 'row', flexWrap: 'wrap' },
   subform: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 },
   fila: { flexDirection: 'row', gap: 8 },
+  formTitulo: { fontSize: 16, fontWeight: '700', color: colores.verde, marginBottom: 10 },
 });

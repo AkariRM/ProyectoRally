@@ -8,4 +8,4 @@ module.exports = crudRouter('especies', {
   temporadaSiembra: { type: 'string' },
   tratamientoPregerminativo: { type: 'string' },
   validada: { type: 'enum', values: [true, false] },
-});
+}, { soloAdmin: true });

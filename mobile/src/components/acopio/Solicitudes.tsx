@@ -69,7 +69,7 @@ export default function Solicitudes() {
   });
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [nombre, setNombre] = useState(usuario?.nombre ?? '');
+  const [nombre, setNombre] = useState('');
   const [contacto, setContacto] = useState('');
   const [direccion, setDireccion] = useState('');
   const [municipio, setMunicipio] = useState<Municipio | null>('Jiquilpan');

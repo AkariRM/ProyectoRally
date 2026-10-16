@@ -5,6 +5,7 @@
 
 const express = require('express');
 const db = require('./db');
+const { requiereUsuario, requiereAdmin } = require('./auth');
 
 function validate(schema, body, { partial = false } = {}) {
   const errores = [];
@@ -46,8 +47,11 @@ function validate(schema, body, { partial = false } = {}) {
   return { errores, data };
 }
 
+// Permisos: leer es público; crear requiere sesión (o admin si hooks.soloAdmin);
+// editar y borrar siempre requieren admin. usuarioId se toma de la sesión.
 function crudRouter(collection, schema, hooks = {}) {
   const router = express.Router();
+  const puedeCrear = hooks.soloAdmin ? requiereAdmin : requiereUsuario;
 
   router.get('/', (req, res) => {
     let items = db.list(collection);
@@ -64,23 +68,29 @@ function crudRouter(collection, schema, hooks = {}) {
     res.json({ success: true, data: item });
   });
 
-  router.post('/', (req, res) => {
-    const { errores, data } = validate(schema, req.body);
+  router.post('/', puedeCrear, (req, res) => {
+    const body = schema.usuarioId ? { ...req.body, usuarioId: req.usuario.id } : req.body;
+    const { errores, data } = validate(schema, body);
     if (hooks.validate) errores.push(...hooks.validate(data));
     if (errores.length) return res.status(400).json({ error: errores.join('; '), errores });
     const final = hooks.beforeCreate ? hooks.beforeCreate(data) : data;
     res.status(201).json({ success: true, data: db.insert(collection, final) });
   });
 
-  router.put('/:id', (req, res) => {
+  router.put('/:id', requiereAdmin, (req, res) => {
     if (!db.get(collection, req.params.id)) return res.status(404).json({ error: 'No encontrado' });
     const { errores, data } = validate(schema, req.body, { partial: true });
+    if (hooks.validate) errores.push(...hooks.validate({ ...db.get(collection, req.params.id), ...data }));
     if (errores.length) return res.status(400).json({ error: errores.join('; '), errores });
     res.json({ success: true, data: db.update(collection, req.params.id, data) });
   });
 
-  router.delete('/:id', (req, res) => {
-    if (!db.remove(collection, req.params.id)) return res.status(404).json({ error: 'No encontrado' });
+  router.delete('/:id', requiereAdmin, (req, res) => {
+    const item = db.get(collection, req.params.id);
+    if (!item) return res.status(404).json({ error: 'No encontrado' });
+    const error = hooks.beforeDelete && hooks.beforeDelete(item);
+    if (error) return res.status(409).json({ error });
+    db.remove(collection, item.id);
     res.json({ success: true });
   });
 

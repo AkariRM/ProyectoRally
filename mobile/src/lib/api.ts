@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import type {
   CatalogoEnsayos, Dispersion, EntregaPoda, Ensayo, Especie, EstadoSolicitud, InventarioBiomasa, Lote,
-  Jornada, ProcesoBiomasa, PuntoAcopio, Seguimiento, Solicitud, Stats, Usuario, ZonaPoda,
+  Jornada, ProcesoBiomasa, PuntoAcopio, Rol, Seguimiento, Sesion, Solicitud, Stats, Usuario, ZonaPoda,
 } from './types';
 
 // URL del backend:
@@ -16,12 +16,22 @@ function resolverBaseUrl(): string {
 
 export const BASE_URL = resolverBaseUrl();
 
+// Token de la sesión actual (lo fija UsuarioProvider)
+let token: string | null = null;
+export const setToken = (t: string | null) => {
+  token = t;
+};
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let resp: Response;
   try {
     resp = await fetch(`${BASE_URL}${path}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
     });
   } catch {
     throw new Error(`No hay conexión con el servidor (${BASE_URL}). ¿Está corriendo el backend?`);
@@ -34,10 +44,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 const get = <T>(path: string) => request<T>(path);
 const post = <T>(path: string, data: object) =>
   request<T>(path, { method: 'POST', body: JSON.stringify(data) });
+const put = <T>(path: string, data: object) =>
+  request<T>(path, { method: 'PUT', body: JSON.stringify(data) });
+const del = (path: string) => request<unknown>(path, { method: 'DELETE' });
 
 export const api = {
   especies: () => get<Especie[]>('/especies'),
   puntosAcopio: () => get<PuntoAcopio[]>('/puntos-acopio'),
+  crearPuntoAcopio: (data: Partial<PuntoAcopio>) => post<PuntoAcopio>('/puntos-acopio', data),
+  editarPuntoAcopio: (id: string, data: Partial<PuntoAcopio>) => put<PuntoAcopio>(`/puntos-acopio/${id}`, data),
+  eliminarPuntoAcopio: (id: string) => del(`/puntos-acopio/${id}`),
 
   entregasPoda: () => get<EntregaPoda[]>('/entregas-poda'),
   crearEntregaPoda: (data: Partial<EntregaPoda>) => post<EntregaPoda>('/entregas-poda', data),
@@ -55,13 +71,14 @@ export const api = {
 
   zonasPoda: () => get<ZonaPoda[]>('/zonas-poda'),
   crearZonaPoda: (data: Partial<ZonaPoda>) => post<ZonaPoda>('/zonas-poda', data),
+  editarZonaPoda: (id: string, data: Partial<ZonaPoda>) => put<ZonaPoda>(`/zonas-poda/${id}`, data),
+  eliminarZonaPoda: (id: string) => del(`/zonas-poda/${id}`),
   generarJornadas: (zonaId: string, semanas = 4) =>
     post<Jornada[]>(`/zonas-poda/${zonaId}/generar-jornadas`, { semanas }),
 
   jornadasProximas: () => get<Jornada[]>('/jornadas/proximas'),
   crearJornada: (data: Partial<Jornada>) => post<Jornada>('/jornadas', data),
-  apuntarmeJornada: (id: string, usuarioId: string, quitar = false) =>
-    post<Jornada>(`/jornadas/${id}/apuntarme`, { usuarioId, quitar }),
+  apuntarmeJornada: (id: string, quitar = false) => post<Jornada>(`/jornadas/${id}/apuntarme`, { quitar }),
   cambiarEstadoJornada: (
     id: string,
     data: { estado: 'recolectada' | 'cancelada'; kgRecolectados?: number; puntoDestinoId?: string; usuarioId?: string },
@@ -82,8 +99,12 @@ export const api = {
   ensayos: () => get<Ensayo[]>('/ensayos'),
   crearEnsayo: (data: Partial<Ensayo>) => post<Ensayo>('/ensayos', data),
 
-  registrar: (data: Partial<Usuario>) => post<Usuario>('/usuarios/registro', data),
-  login: (email: string) => post<Usuario>('/usuarios/login', { email }),
+  registrar: (email: string, password: string) => post<Sesion>('/usuarios/registro', { email, password }),
+  login: (email: string, password: string) => post<Sesion>('/usuarios/login', { email, password }),
+  yo: () => get<Usuario>('/usuarios/yo'),
+  usuarios: () => get<Usuario[]>('/usuarios'),
+  cambiarRol: (id: string, rol: Rol) => put<Usuario>(`/usuarios/${id}/rol`, { rol }),
+  eliminarUsuario: (id: string) => del(`/usuarios/${id}`),
 
   stats: () => get<Stats>('/stats'),
 };

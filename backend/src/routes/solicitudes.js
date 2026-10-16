@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../lib/db');
 const { crudRouter, validate } = require('../lib/crud');
+const { requiereUsuario } = require('../lib/auth');
 
 // Solicitudes de recolección: alguien tiene poda de ficus y pide que pasen por ella.
 // Flujo de estado: pendiente → asignada → recolectada  (o cancelada)
@@ -16,19 +17,22 @@ const TRANSICIONES = {
 
 const router = express.Router();
 
-router.put('/:id/estado', (req, res) => {
+router.put('/:id/estado', requiereUsuario, (req, res) => {
   const solicitud = db.get('solicitudes', req.params.id);
   if (!solicitud) return res.status(404).json({ error: 'No encontrado' });
 
   const { errores, data } = validate(
     {
       estado: { type: 'enum', required: true, values: ESTADOS },
-      recolectorId: { type: 'string', ref: 'usuarios' },
       puntoId: { type: 'string', ref: 'puntosAcopio' },
       kgReales: { type: 'number', min: 0.1 },
     },
     req.body,
   );
+  data.recolectorId = req.usuario.id;
+  if (data.estado === 'cancelada' && req.usuario.rol !== 'admin' && solicitud.usuarioId !== req.usuario.id) {
+    errores.push('solo quien hizo la solicitud o un administrador puede cancelarla');
+  }
   if (!TRANSICIONES[solicitud.estado].includes(data.estado)) {
     errores.push(`no se puede pasar de ${solicitud.estado} a ${data.estado}`);
   }

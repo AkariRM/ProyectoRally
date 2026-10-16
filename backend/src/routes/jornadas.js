@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../lib/db');
 const { crudRouter, validate } = require('../lib/crud');
 const { fechaLocal, validarHora, validarFecha } = require('../lib/fechas');
+const { requiereUsuario } = require('../lib/auth');
 
 // Jornadas de poda: un día y horario concretos en que se poda una zona.
 // Los voluntarios se apuntan, recolectan la biomasa y la llevan al punto destino.
@@ -24,20 +25,21 @@ router.get('/proximas', (req, res) => {
   res.json({ success: true, data: proximas });
 });
 
-// POST /api/jornadas/:id/apuntarme { usuarioId, quitar? }
-router.post('/:id/apuntarme', (req, res) => {
+// POST /api/jornadas/:id/apuntarme { quitar? }  (el usuario de la sesión)
+router.post('/:id/apuntarme', requiereUsuario, (req, res) => {
   const jornada = db.get('jornadas', req.params.id);
   if (!jornada) return res.status(404).json({ error: 'No encontrado' });
-  const { usuarioId, quitar } = req.body;
-  if (!usuarioId || !db.get('usuarios', usuarioId)) return res.status(400).json({ error: 'usuarioId inválido' });
+  const usuarioId = req.usuario.id;
+  const { quitar } = req.body;
   const voluntarios = new Set(jornada.voluntarios || []);
   if (quitar) voluntarios.delete(usuarioId);
   else voluntarios.add(usuarioId);
   res.json({ success: true, data: db.update('jornadas', jornada.id, { voluntarios: [...voluntarios] }) });
 });
 
-// PUT /api/jornadas/:id/estado { estado, kgRecolectados, puntoDestinoId, usuarioId }
-router.put('/:id/estado', (req, res) => {
+// PUT /api/jornadas/:id/estado { estado, kgRecolectados, puntoDestinoId }
+// Cualquier usuario registra la recolección; solo un admin cancela.
+router.put('/:id/estado', requiereUsuario, (req, res) => {
   const jornada = db.get('jornadas', req.params.id);
   if (!jornada) return res.status(404).json({ error: 'No encontrado' });
   const { errores, data } = validate(
@@ -45,10 +47,11 @@ router.put('/:id/estado', (req, res) => {
       estado: { type: 'enum', required: true, values: ['recolectada', 'cancelada'] },
       kgRecolectados: { type: 'number', min: 0.1 },
       puntoDestinoId: { type: 'string', ref: 'puntosAcopio' },
-      usuarioId: { type: 'string', ref: 'usuarios' },
     },
     req.body,
   );
+  data.usuarioId = req.usuario.id;
+  if (data.estado === 'cancelada' && req.usuario.rol !== 'admin') errores.push('solo un administrador puede cancelar');
   if (jornada.estado !== 'programada') errores.push(`la jornada ya está ${jornada.estado}`);
   const puntoId = data.puntoDestinoId || jornada.puntoDestinoId;
   if (data.estado === 'recolectada' && (!data.kgRecolectados || !puntoId)) {
@@ -90,6 +93,7 @@ router.use(
         ...validarHora('horaInicio', data.horaInicio),
         ...validarHora('horaFin', data.horaFin),
       ],
+      soloAdmin: true,
       // Hereda horario y destino de la zona si no se indican
       beforeCreate: data => {
         const zona = db.get('zonasPoda', data.zonaId);

@@ -39,7 +39,25 @@ npm test           # pruebas de la API
 ```
 
 Los datos se guardan en `backend/data/db.json` (se crea solo, no se sube a git).
-`POST /api/admin/reset` borra todo y regresa a los datos iniciales.
+`POST /api/admin/reset` (solo admin) borra todo y regresa a los datos iniciales.
+
+### Cuentas y administrador
+
+- **Toda la app y la API requieren sesión.** Solo registrarse e iniciar sesión son públicos.
+- Los usuarios se registran solo con **correo y clave** (mínimo 6 caracteres).
+- La **cuenta de administrador** se define en `backend/.env` con `ADMIN_EMAIL` y `ADMIN_PASSWORD`. Al arrancar el servidor se crea esa cuenta; si ya existe, se le restablece la clave.
+- Cambia también `AUTH_SECRET` por un texto largo y aleatorio: se usa para firmar las sesiones.
+- Un admin puede hacer admin a otros usuarios desde la app (**Inicio → Administrar usuarios**).
+
+| Acción | Sin sesión | Voluntario | Admin |
+|---|---|---|---|
+| Ver datos | — | ✅ | ✅ |
+| Registrar entregas, solicitudes, dispersiones, lotes, ensayos, procesos | — | ✅ | ✅ |
+| Apuntarse y registrar recolección de jornadas | — | ✅ | ✅ |
+| Agregar / editar / eliminar puntos de acopio, zonas, jornadas y especies | — | — | ✅ |
+| Editar o eliminar cualquier registro, administrar usuarios | — | — | ✅ |
+
+Un punto de acopio con entregas registradas, o que es destino de alguna zona, no se puede eliminar; en ese caso se edita.
 
 ### Endpoints
 
@@ -56,7 +74,7 @@ Los datos se guardan en `backend/data/db.json` (se crea solo, no se sube a git).
 | Dispersiones | `/api/dispersiones` | Dónde (GPS) y cuántas píldoras se lanzaron |
 | Seguimientos | `/api/seguimientos?dispersionId=` | Plántulas germinadas y vivas por revisión |
 | Ensayos | `/api/ensayos`, `/api/ensayos/catalogo` | Mediciones de laboratorio por tratamiento |
-| Usuarios | `/api/usuarios/registro`, `/api/usuarios/login` | Registro sencillo (sin contraseña) |
+| Usuarios | `/api/usuarios/registro`, `/login`, `/yo`; admin: `GET /`, `PUT /:id/rol`, `DELETE /:id` | Correo y clave; token `Authorization: Bearer <token>` |
 | Estadísticas | `/api/stats` | Totales, por especie, por zona y promedios de ensayos |
 
 Todos los recursos CRUD aceptan `GET /`, `GET /:id`, `POST /`, `PUT /:id` y `DELETE /:id`.
@@ -76,10 +94,11 @@ Para otra URL, crea `mobile/.env` con `EXPO_PUBLIC_API_URL=http://<ip>:3000/api`
 
 | Pantalla | Qué hace |
 |---|---|
-| **Inicio** | Registro, avance del proyecto y cómo funciona |
+| **Login** | Pantalla propia para entrar o crear cuenta (correo y clave); al entrar lleva al dashboard |
+| **Inicio (dashboard)** | Avance del proyecto; admin: administrar usuarios |
 | **Acopio → Zonas de poda** | Mapa de zonas, días y horario de poda, jornadas próximas, "Me apunto", registrar kg recolectados y punto destino, **avisos en el celular** |
 | **Acopio → Solicitudes** | Pedir recolección de poda con GPS; voluntarios la toman, abren la ruta y la cierran con los kg reales |
-| **Acopio → Puntos** | Puntos de acopio y entregas directas de poda fresca |
+| **Acopio → Puntos** | Puntos de acopio y entregas de poda fresca; admin: agregar, editar y eliminar puntos |
 | **Acopio → Biomasa** | Inventario fresca → seca → triturada → en lotes; registrar secado y triturado |
 | **Dispersar** | Registrar dispersión con GPS, lote/especie y cantidad; abrir seguimiento |
 | **Seguimiento** | Contar plántulas germinadas y vivas a las 2, 4 y 8 semanas |
@@ -129,6 +148,5 @@ Todo se mide con báscula de cocina (0.1 g), regla, vaso y cronómetro. Se compa
 - [ ] Validar el catálogo de especies nativas (Bioquímica)
 - [ ] Coordenadas reales de los puntos de acopio y zonas de poda
 - [ ] Horarios reales de poda (Servicios Públicos)
-- [ ] Autenticación real (contraseña / JWT)
 - [ ] Modo sin conexión para registrar en campo sin señal
 - [ ] Publicar el backend en un servidor para usarlo fuera de la red local

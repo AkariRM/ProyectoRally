@@ -1,11 +1,16 @@
 export type Municipio = 'Jiquilpan' | 'Sahuayo' | 'Otro';
-export type Carrera = 'Sistemas' | 'Bioquímica' | 'Arquitectura' | 'Voluntario';
+export type Rol = 'admin' | 'voluntario';
 
 export interface Usuario {
   id: string;
-  nombre: string;
   email: string;
-  carrera?: Carrera;
+  rol: Rol;
+  creadoEn?: string;
+}
+
+export interface Sesion {
+  usuario: Usuario;
+  token: string;
 }
 
 export interface Especie {

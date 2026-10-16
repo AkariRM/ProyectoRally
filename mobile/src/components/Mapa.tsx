@@ -28,7 +28,12 @@ const REGION_INICIAL = {
 
 export default function Mapa({ puntos = [], zonas = [], alto = 220 }: { puntos?: PuntoMapa[]; zonas?: ZonaMapa[]; alto?: number }) {
   return (
-    <MapView style={[styles.mapa, { height: alto }]} initialRegion={REGION_INICIAL}>
+    <MapView
+      style={[styles.mapa, { height: alto }]}
+      initialRegion={REGION_INICIAL}
+      // Sin los botones de Android que abren la app de Google Maps
+      toolbarEnabled={false}
+    >
       {zonas.map(z => (
         <Circle
           key={z.id}

@@ -1,12 +1,15 @@
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Usuario } from './types';
+import { api, setToken } from './api';
+import type { Sesion, Usuario } from './types';
 
-const KEY = 'usuario';
+const KEY = 'sesion';
 
 interface UsuarioState {
   usuario: Usuario | null;
-  guardar: (u: Usuario) => Promise<void>;
+  esAdmin: boolean;
+  cargando: boolean; // recuperando la sesión guardada al abrir la app
+  iniciar: (s: Sesion) => Promise<void>;
   salir: () => Promise<void>;
 }
 
@@ -14,24 +17,49 @@ const UsuarioContext = createContext<UsuarioState | undefined>(undefined);
 
 export function UsuarioProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [cargando, setCargando] = useState(true);
 
+  // Recupera la sesión guardada y confirma con el servidor (por si cambió el rol)
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then(json => json && setUsuario(JSON.parse(json)))
-      .catch(() => {});
+    (async () => {
+      try {
+        const json = await AsyncStorage.getItem(KEY);
+        if (!json) return;
+        const sesion: Sesion = JSON.parse(json);
+        setToken(sesion.token);
+        setUsuario(sesion.usuario);
+        const actual = await api.yo();
+        setUsuario(actual);
+      } catch (e) {
+        // Token vencido o inválido → cerrar sesión; sin conexión → conservarla
+        if (!(e as Error).message.startsWith('No hay conexión')) {
+          setToken(null);
+          setUsuario(null);
+          await AsyncStorage.removeItem(KEY).catch(() => {});
+        }
+      } finally {
+        setCargando(false);
+      }
+    })();
   }, []);
 
-  const guardar = async (u: Usuario) => {
-    setUsuario(u);
-    await AsyncStorage.setItem(KEY, JSON.stringify(u)).catch(() => {});
+  const iniciar = async (s: Sesion) => {
+    setToken(s.token);
+    setUsuario(s.usuario);
+    await AsyncStorage.setItem(KEY, JSON.stringify(s)).catch(() => {});
   };
 
   const salir = async () => {
+    setToken(null);
     setUsuario(null);
     await AsyncStorage.removeItem(KEY).catch(() => {});
   };
 
-  return <UsuarioContext.Provider value={{ usuario, guardar, salir }}>{children}</UsuarioContext.Provider>;
+  return (
+    <UsuarioContext.Provider value={{ usuario, esAdmin: usuario?.rol === 'admin', cargando, iniciar, salir }}>
+      {children}
+    </UsuarioContext.Provider>
+  );
 }
 
 export function useUsuario(): UsuarioState {

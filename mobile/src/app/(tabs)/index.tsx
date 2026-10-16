@@ -1,14 +1,9 @@
-import { useState } from 'react';
 import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { api, BASE_URL } from '@/lib/api';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
-import type { Carrera } from '@/lib/types';
-import { Aviso, Boton, Campo, colores, Dato, Fila, Opciones, Pantalla, Seccion, Tarjeta } from '@/components/ui';
-import { alerta } from '@/lib/alerta';
-
-const CARRERAS: Carrera[] = ['Sistemas', 'Bioquímica', 'Arquitectura', 'Voluntario'];
+import { Aviso, Boton, colores, Dato, Fila, Pantalla, Seccion, Tarjeta } from '@/components/ui';
 
 const PASOS = [
   { emoji: '✂️', texto: 'Se recolecta la poda de Ficus benjamina en los puntos de acopio.' },
@@ -18,62 +13,30 @@ const PASOS = [
   { emoji: '🌱', texto: 'Se dispersan en campo y se registra el seguimiento de germinación.' },
 ];
 
-function Registro() {
-  const { guardar } = useUsuario();
-  const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState('');
-  const [carrera, setCarrera] = useState<Carrera | null>(null);
-  const [cargando, setCargando] = useState(false);
-
-  const enviar = async (modo: 'registro' | 'login') => {
-    setCargando(true);
-    try {
-      const u = modo === 'registro'
-        ? await api.registrar({ nombre, email, carrera: carrera ?? undefined })
-        : await api.login(email);
-      await guardar(u);
-    } catch (e) {
-      alerta('No se pudo', (e as Error).message);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  return (
-    <Tarjeta>
-      <Text style={styles.registroTitulo}>Únete al proyecto</Text>
-      <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} placeholder="Tu nombre" />
-      <Campo etiqueta="Correo" value={email} onChangeText={setEmail} placeholder="correo@ejemplo.com" keyboardType="email-address" autoCapitalize="none" />
-      <Opciones etiqueta="Carrera" opciones={CARRERAS} valor={carrera} onChange={setCarrera} />
-      <Boton texto="Registrarme" onPress={() => enviar('registro')} cargando={cargando} />
-      <Boton texto="Ya tengo cuenta (entrar con correo)" onPress={() => enviar('login')} secundario cargando={cargando} />
-    </Tarjeta>
-  );
-}
-
 export default function Inicio() {
-  const { usuario, salir } = useUsuario();
+  const { usuario, esAdmin, salir } = useUsuario();
   const { data: stats, error } = useData(api.stats);
 
   return (
-    <Pantalla titulo="Píldoras Bióticas 🌱" subtitulo="Reforestación con poda de Ficus benjamina · Jiquilpan y Sahuayo">
+    <Pantalla titulo="Avance del proyecto 🌱" subtitulo="Reforestación con poda de Ficus benjamina · Jiquilpan y Sahuayo">
       {error ? <Aviso texto={`${error}\nServidor: ${BASE_URL}`} /> : null}
 
       {usuario ? (
         <Tarjeta style={styles.saludo}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.saludoTexto}>Hola, {usuario.nombre}</Text>
-            {usuario.carrera ? <Text style={styles.saludoCarrera}>{usuario.carrera}</Text> : null}
+            <Text style={styles.saludoTexto}>Hola, {usuario.email.split('@')[0]}</Text>
+            <Text style={styles.saludoCarrera}>{esAdmin ? '⭐ Administrador' : 'Voluntario'} · {usuario.email}</Text>
           </View>
           <TouchableOpacity onPress={salir}>
             <Text style={{ color: colores.textoSuave }}>Salir</Text>
           </TouchableOpacity>
         </Tarjeta>
-      ) : (
-        <Registro />
-      )}
+      ) : null}
+      {esAdmin ? (
+        <Boton texto="⚙️  Administrar usuarios" color={colores.texto} secundario onPress={() => router.push('/admin')} />
+      ) : null}
 
-      <Seccion>Avance del proyecto</Seccion>
+      <Seccion>Biomasa y producción</Seccion>
       <Fila>
         <Dato valor={`${stats?.kgPodaRecibida ?? 0} kg`} etiqueta="Poda de ficus recolectada" color={colores.tierraClaro} />
         <Dato valor={stats?.pildorasProducidas ?? 0} etiqueta="Píldoras producidas" color={colores.ambarClaro} />
@@ -106,7 +69,6 @@ export default function Inicio() {
 }
 
 const styles = StyleSheet.create({
-  registroTitulo: { fontSize: 17, fontWeight: '700', color: colores.texto, marginBottom: 12 },
   saludo: { flexDirection: 'row', alignItems: 'center' },
   saludoTexto: { fontSize: 17, fontWeight: '700', color: colores.texto },
   saludoCarrera: { fontSize: 13, color: colores.verde, marginTop: 2 },
