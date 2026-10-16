@@ -7,7 +7,7 @@ import { useUsuario } from '@/lib/usuario';
 import type { Especie, Formula, Ingrediente, ItemCatalogo, Prueba, RecursoBiomasa } from '@/lib/types';
 import { NOMBRE_COMPONENTE, NOMBRE_RECURSO } from '@/lib/balance';
 import { nombresDe } from '@/lib/catalogos';
-import { Aviso, Boton, BotonChico, Campo, colores, Opciones, Pantalla, Tarjeta } from '@/components/ui';
+import { Aviso, Boton, BotonChico, Campo, colores, ListaDesplegable, Opciones, Pantalla, Tarjeta } from '@/components/ui';
 
 type Seccion = 'especies' | NombreCatalogo;
 
@@ -297,6 +297,8 @@ export default function Catalogos() {
     seccion === 'especies' ? [] : ((data?.catalogos[seccion] ?? []) as (ItemCatalogo & Partial<Prueba & Ingrediente & Formula>)[]);
   const ingredientes = data?.catalogos.ingredientes ?? [];
   const nombreIng = nombresDe(ingredientes);
+  const especieEditada = seccion === 'especies' ? data?.especies.find(e => e.id === editando) : undefined;
+  const itemEditado = seccion !== 'especies' ? items.find(i => i.id === editando) : undefined;
 
   // Formulario según la sección (item = editar; sin item = nuevo)
   const formulario = (item?: ItemCatalogo) => {
@@ -349,44 +351,48 @@ export default function Catalogos() {
       <Opciones etiqueta="" opciones={SECCIONES} nombres={NOMBRES} valor={seccion} onChange={cambiarSeccion} />
       <Aviso tipo="info" texto={AYUDA[seccion]} />
 
-      {editando !== 'nuevo' ? <BotonChico texto="+ Agregar" relleno onPress={() => setEditando('nuevo')} /> : null}
       {editando === 'nuevo' ? (
         seccion === 'especies'
           ? <FormEspecie onListo={terminar} onCancelar={() => setEditando(null)} />
           : formulario()
       ) : null}
+      {especieEditada ? <FormEspecie key={especieEditada.id} especie={especieEditada} onListo={terminar} onCancelar={() => setEditando(null)} /> : null}
+      {itemEditado ? formulario(itemEditado) : null}
 
-      {seccion === 'especies'
-        ? (data?.especies ?? []).map(e => editando === e.id ? (
-          <FormEspecie key={e.id} especie={e} onListo={terminar} onCancelar={() => setEditando(null)} />
-        ) : (
-          <Tarjeta key={e.id} style={styles.fila}>
-            <Text style={styles.nombre}>{e.nombreComun} {e.validada ? '✅' : ''}</Text>
-            <Text style={styles.detalle}><Text style={styles.cursiva}>{e.nombreCientifico}</Text>{e.tipo ? ` · ${e.tipo}` : ''}</Text>
-            {e.tratamientoPregerminativo ? <Text style={styles.detalle}>Tratamiento: {e.tratamientoPregerminativo}</Text> : null}
-            {e.notas ? <Text style={styles.detalle}>{e.notas}</Text> : null}
-            <View style={styles.acciones}>
-              <BotonChico texto="✏️ Editar" onPress={() => setEditando(e.id)} />
-              <BotonChico texto="🗑️ Eliminar" color={colores.rojo} onPress={() => eliminar(e.nombreComun, () => api.eliminarEspecie(e.id))} />
-            </View>
-          </Tarjeta>
-        ))
-        : items.map(i => editando === i.id ? (
-          formulario(i)
-        ) : (
-          <Tarjeta key={i.id} style={styles.fila}>
-            <Text style={styles.nombre}>{i.nombre}{i.unidad ? ` (${i.unidad})` : ''}{i.calculada ? ' 🧮' : ''}</Text>
-            {detalle(i)}
-            <View style={styles.acciones}>
-              <BotonChico texto="✏️ Editar" onPress={() => setEditando(i.id)} />
-              <BotonChico
-                texto="🗑️ Eliminar"
-                color={colores.rojo}
-                onPress={() => eliminar(i.nombre, () => api.eliminarDeCatalogo(seccion, i.id))}
-              />
-            </View>
-          </Tarjeta>
-        ))}
+      <ListaDesplegable
+        key={seccion}
+        titulo={NOMBRES[seccion]}
+        vacio="Todavía no hay elementos."
+        extra={editando !== 'nuevo' ? <BotonChico texto="+ Agregar" relleno onPress={() => setEditando('nuevo')} /> : null}
+      >
+        {seccion === 'especies'
+          ? (data?.especies ?? []).map(e => (
+            <Tarjeta key={e.id} style={styles.fila}>
+              <Text style={styles.nombre}>{e.nombreComun} {e.validada ? '✅' : ''}</Text>
+              <Text style={styles.detalle}><Text style={styles.cursiva}>{e.nombreCientifico}</Text>{e.tipo ? ` · ${e.tipo}` : ''}</Text>
+              {e.tratamientoPregerminativo ? <Text style={styles.detalle}>Tratamiento: {e.tratamientoPregerminativo}</Text> : null}
+              {e.notas ? <Text style={styles.detalle}>{e.notas}</Text> : null}
+              <View style={styles.acciones}>
+                <BotonChico texto="✏️ Editar" onPress={() => setEditando(e.id)} />
+                <BotonChico texto="🗑️ Eliminar" color={colores.rojo} onPress={() => eliminar(e.nombreComun, () => api.eliminarEspecie(e.id))} />
+              </View>
+            </Tarjeta>
+          ))
+          : items.map(i => (
+            <Tarjeta key={i.id} style={styles.fila}>
+              <Text style={styles.nombre}>{i.nombre}{i.unidad ? ` (${i.unidad})` : ''}{i.calculada ? ' 🧮' : ''}</Text>
+              {detalle(i)}
+              <View style={styles.acciones}>
+                <BotonChico texto="✏️ Editar" onPress={() => setEditando(i.id)} />
+                <BotonChico
+                  texto="🗑️ Eliminar"
+                  color={colores.rojo}
+                  onPress={() => eliminar(i.nombre, () => api.eliminarDeCatalogo(seccion, i.id))}
+                />
+              </View>
+            </Tarjeta>
+          ))}
+      </ListaDesplegable>
     </Pantalla>
   );
 }

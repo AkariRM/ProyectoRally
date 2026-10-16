@@ -98,7 +98,7 @@ export function ListaDesplegable({ titulo, children, visibles = 3, vacio, extra 
       </TouchableOpacity>
       {abierta ? (
         <>
-          {extra}
+          {extra ? <View style={styles.listaExtra}>{extra}</View> : null}
           {!items.length && vacio ? <Text style={styles.ayuda}>{vacio}</Text> : null}
           <ScrollView style={altoMax ? { maxHeight: altoMax } : undefined} nestedScrollEnabled persistentScrollbar>
             {items.map((item, i) => (
@@ -310,6 +310,7 @@ const styles = StyleSheet.create({
   listaTitulo: { fontSize: 16, fontWeight: '700', color: colores.texto },
   listaCuenta: { fontWeight: '400', color: colores.textoSuave },
   listaFlecha: { fontSize: 13, color: colores.verde },
+  listaExtra: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },
   listaMas: { fontSize: 12, color: colores.textoSuave, textAlign: 'center', marginTop: 4 },
   barraRelleno: { height: 10, backgroundColor: colores.verde, borderRadius: 5 },
 });
