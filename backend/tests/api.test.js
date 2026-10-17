@@ -256,6 +256,21 @@ describe('API Bio Red', () => {
     expect(body.stats.jornadasProximas).toBe(3);
   });
 
+  test('zona con polígono dibujado; lista vacía lo quita y uno inválido se rechaza', async () => {
+    const poligono = [[19.99, -102.72], [19.991, -102.718], [19.989, -102.717]];
+    const zona = await comoAdmin(request(app))
+      .post('/api/zonas-poda')
+      .send({ nombre: 'Camellón dibujado', lat: 19.99, lng: -102.718, poligono })
+      .expect(201);
+    expect(zona.body.data.poligono).toEqual(poligono);
+
+    const mal = await comoAdmin(request(app)).put(`/api/zonas-poda/${zona.body.data.id}`).send({ poligono: [[19.99, -102.72]] });
+    expect(mal.status).toBe(400);
+
+    const sin = await comoAdmin(request(app)).put(`/api/zonas-poda/${zona.body.data.id}`).send({ poligono: [] }).expect(200);
+    expect(sin.body.data.poligono).toEqual([]);
+  });
+
   test('valida formato de fecha y hora de jornadas', async () => {
     const res = await comoAdmin(request(app))
       .post('/api/jornadas')

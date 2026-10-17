@@ -1,10 +1,11 @@
 const { crudRouter } = require('../lib/crud');
 const db = require('../lib/db');
 const { validarFecha } = require('../lib/fechas');
+const { validarPoligono } = require('../lib/geo');
 
 // Áreas a reforestar: laderas quemadas o degradadas (definidas por Arquitectura).
 // Se representan como círculo (lat, lng, radioM); opcionalmente un polígono
-// [[lat, lng], ...] importado de QGIS.
+// [[lat, lng], ...] dibujado en el mapa de la app o importado de QGIS.
 const RIESGOS = ['bajo', 'medio', 'alto'];
 const ESTADOS = ['quemada', 'degradada', 'en reforestación', 'recuperada'];
 
@@ -29,11 +30,7 @@ module.exports = crudRouter(
     roles: ['brigadista'],
     validate: data => {
       const errores = [...validarFecha('fechaIncendio', data.fechaIncendio)];
-      if (data.poligono !== undefined) {
-        const ok = Array.isArray(data.poligono) && data.poligono.length >= 3 &&
-          data.poligono.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
-        if (!ok) errores.push('poligono debe ser una lista de al menos 3 puntos [lat, lng]');
-      }
+      errores.push(...validarPoligono(data.poligono));
       if (data.especiesRecomendadas !== undefined) {
         const ok = Array.isArray(data.especiesRecomendadas) && data.especiesRecomendadas.every(id => db.get('especies', id));
         if (!ok) errores.push('especiesRecomendadas debe ser una lista de ids de especies existentes');

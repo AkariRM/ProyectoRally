@@ -6,7 +6,8 @@ import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
 import type { AreaReforestacion, Especie, EstadoArea, Municipio, Riesgo } from '@/lib/types';
 import Mapa from '@/components/Mapa';
-import SelectorUbicacion from '@/components/SelectorUbicacion';
+import SelectorZona from '@/components/SelectorZona';
+import { areaM2, centroYRadio, esPoligono, type Poligono } from '@/lib/geo';
 import {
   Aviso, Boton, BotonChico, Campo, colores, Opciones, OpcionesMultiples, Seccion, Tarjeta,
 } from '@/components/ui';
@@ -37,6 +38,7 @@ function FormArea({ area, especies, onListo, onCancelar }: {
   const [lat, setLat] = useState(area ? String(area.lat) : '');
   const [lng, setLng] = useState(area ? String(area.lng) : '');
   const [radio, setRadio] = useState(String(area?.radioM ?? 300));
+  const [poligono, setPoligono] = useState<Poligono>(area?.poligono ?? []);
   const [riesgo, setRiesgo] = useState<Riesgo | null>(area?.riesgoIncendio ?? 'alto');
   const [estado, setEstado] = useState<EstadoArea | null>(area?.estado ?? 'quemada');
   const [fechaIncendio, setFechaIncendio] = useState(area?.fechaIncendio ?? '');
@@ -52,12 +54,22 @@ function FormArea({ area, especies, onListo, onCancelar }: {
   };
   const valorMapa = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)) ? { lat: Number(lat), lng: Number(lng) } : coords;
 
+  // Al dibujar el área se calculan sus hectáreas
+  const cambiarPoligono = (p: Poligono) => {
+    setPoligono(p);
+    if (esPoligono(p)) setHectareas((areaM2(p) / 10000).toFixed(2));
+  };
+
   const guardar = async () => {
     const ubic = lat && lng ? { lat: Number(lat), lng: Number(lng) } : coords;
-    if (!ubic) return alerta('Falta ubicación', 'Marca el área en el mapa, usa tu ubicación o escribe latitud y longitud.');
+    if (!ubic && !esPoligono(poligono)) return alerta('Falta ubicación', 'Marca o dibuja el área en el mapa, usa tu ubicación o escribe latitud y longitud.');
     setEnviando(true);
+    // Con polígono dibujado, el centro y el radio se calculan para que lo cubran
+    const ubicacion = esPoligono(poligono)
+      ? { ...centroYRadio(poligono), poligono }
+      : { lat: ubic!.lat, lng: ubic!.lng, radioM: Number(radio), poligono: area?.poligono?.length ? [] : undefined };
     const datos: Partial<AreaReforestacion> = {
-      nombre, municipio: municipio ?? undefined, lat: ubic.lat, lng: ubic.lng, radioM: Number(radio),
+      nombre, municipio: municipio ?? undefined, ...ubicacion,
       riesgoIncendio: riesgo ?? undefined, estado: estado ?? undefined,
       fechaIncendio: fechaIncendio || undefined, hectareas: hectareas ? Number(hectareas) : undefined,
       especiesRecomendadas: recomendadas, notas,
@@ -79,13 +91,24 @@ function FormArea({ area, especies, onListo, onCancelar }: {
       <Text style={styles.formTitulo}>{area ? `Editar: ${area.nombre}` : 'Nueva área a reforestar'}</Text>
       <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} placeholder="Ej: Cerro de San Francisco, ladera norte" />
       <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
-      <SelectorUbicacion etiqueta="Centro del área" valor={valorMapa} onChange={ponerCoords} motivo="ubicar el área" />
+      <SelectorZona
+        centro={valorMapa}
+        radioM={Number(radio) || 0}
+        poligono={poligono}
+        onCentro={ponerCoords}
+        onPoligono={cambiarPoligono}
+        motivo="ubicar el área"
+      />
+      {!esPoligono(poligono) ? (
+        <View style={styles.fila}>
+          <View style={{ flex: 1 }}><Campo etiqueta="Latitud" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" placeholder="19.98" /></View>
+          <View style={{ flex: 1 }}><Campo etiqueta="Longitud" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" placeholder="-102.73" /></View>
+        </View>
+      ) : null}
       <View style={styles.fila}>
-        <View style={{ flex: 1 }}><Campo etiqueta="Latitud" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" placeholder="19.98" /></View>
-        <View style={{ flex: 1 }}><Campo etiqueta="Longitud" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" placeholder="-102.73" /></View>
-      </View>
-      <View style={styles.fila}>
-        <View style={{ flex: 1 }}><Campo etiqueta="Radio (m)" value={radio} onChangeText={setRadio} keyboardType="number-pad" /></View>
+        {!esPoligono(poligono) ? (
+          <View style={{ flex: 1 }}><Campo etiqueta="Radio (m)" value={radio} onChangeText={setRadio} keyboardType="number-pad" /></View>
+        ) : null}
         <View style={{ flex: 1 }}><Campo etiqueta="Hectáreas" value={hectareas} onChangeText={setHectareas} keyboardType="decimal-pad" /></View>
       </View>
       <Opciones etiqueta="Riesgo de incendio" opciones={RIESGOS} valor={riesgo} onChange={setRiesgo} />
@@ -139,7 +162,7 @@ export default function Areas() {
     <>
       {error ? <Aviso texto={error} /> : null}
       <Mapa
-        zonas={areas.map(a => ({ id: a.id, lat: a.lat, lng: a.lng, radioM: a.radioM, color: COLOR_ESTADO[a.estado], titulo: a.nombre }))}
+        zonas={areas.map(a => ({ id: a.id, lat: a.lat, lng: a.lng, radioM: a.radioM, poligono: a.poligono, color: COLOR_ESTADO[a.estado], titulo: a.nombre }))}
       />
       <Text style={styles.leyenda}>🔥 Quemada   🟠 Degradada   🌱 En reforestación   🌳 Recuperada</Text>
 

@@ -1,26 +1,37 @@
 import { ComponentRef, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
-import { htmlMapa, type Coordenada } from './mapaHtml';
+import { htmlMapa, type Coordenada, type EstadoElegir } from './mapaHtml';
 import { ORIGEN_MAPA } from './Mapa';
 
-// Versión celular del mapa para elegir un lugar: se toca el mapa o se arrastra el pin
-export default function MapaElegir({ valor, onElegir, alto = 240 }: {
-  valor: Coordenada | null; onElegir: (c: Coordenada) => void; alto?: number;
-}) {
+export type PropsMapaElegir = {
+  valor: Coordenada | null;
+  onElegir: (c: Coordenada) => void;
+  alto?: number;
+  modo?: 'punto' | 'dibujar'; // dibujar: cada toque agrega un vértice (onVertice)
+  radioM?: number; // círculo de vista previa alrededor del pin
+  poligono?: [number, number][];
+  onVertice?: (c: Coordenada) => void;
+};
+
+// Versión celular del mapa para elegir un lugar: se toca el mapa o se arrastra el pin;
+// en modo dibujar se marcan los vértices de la zona.
+export default function MapaElegir({ valor, onElegir, alto = 240, modo = 'punto', radioM, poligono, onVertice }: PropsMapaElegir) {
   const web = useRef<ComponentRef<typeof WebView>>(null);
   const ultimoDelMapa = useRef<Coordenada | null>(null);
-  // El HTML se arma una sola vez con el valor inicial; después el pin se mueve con mover()
+  const estado: EstadoElegir = { valor, modo, radioM, poligono };
+  // El HTML se arma una sola vez con el estado inicial; después se actualiza con actualizar()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const html = useMemo(() => htmlMapa({ tipo: 'elegir', valor }), []);
+  const html = useMemo(() => htmlMapa({ tipo: 'elegir', ...estado }), []);
 
-  // Si el valor cambió desde la app (ej. GPS), mueve el pin y centra el mapa
+  // Manda el estado nuevo al mapa; centra si el pin cambió desde la app (ej. GPS)
+  const clave = JSON.stringify(estado);
   useEffect(() => {
-    if (!valor) return;
     const u = ultimoDelMapa.current;
-    if (u && u.lat === valor.lat && u.lng === valor.lng) return;
-    web.current?.injectJavaScript(`window.mover && window.mover(${valor.lat}, ${valor.lng}, true); true;`);
-  }, [valor]);
+    const centrar = !!valor && !(u && u.lat === valor.lat && u.lng === valor.lng);
+    web.current?.injectJavaScript(`window.actualizar && window.actualizar(${clave}, ${centrar}); true;`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
 
   return (
     <View style={[styles.contenedor, { height: alto }]}>
@@ -33,10 +44,11 @@ export default function MapaElegir({ valor, onElegir, alto = 240 }: {
         onMessage={(e: WebViewMessageEvent) => {
           try {
             const d = JSON.parse(e.nativeEvent.data);
+            const c = { lat: d.lat, lng: d.lng };
             if (d.tipo === 'elegido') {
-              ultimoDelMapa.current = { lat: d.lat, lng: d.lng };
-              onElegir({ lat: d.lat, lng: d.lng });
-            }
+              ultimoDelMapa.current = c;
+              onElegir(c);
+            } else if (d.tipo === 'vertice') onVertice?.(c);
           } catch {
             // mensaje que no es del mapa
           }

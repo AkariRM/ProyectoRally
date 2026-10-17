@@ -14,6 +14,7 @@ export interface ZonaMapa {
   lat: number;
   lng: number;
   radioM: number;
+  poligono?: [number, number][]; // [lat, lng]; con 3 o más puntos se dibuja en lugar del círculo
   activa?: boolean; // resaltada (ej. el usuario recibe avisos de ella)
   color?: string; // color hex, ej. '#C62828' (reemplaza al de activa)
   titulo?: string;

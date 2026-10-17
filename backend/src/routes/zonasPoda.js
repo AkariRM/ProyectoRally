@@ -3,6 +3,7 @@ const db = require('../lib/db');
 const { crudRouter } = require('../lib/crud');
 const { fechaLocal, validarHora } = require('../lib/fechas');
 const { requiereRol } = require('../lib/auth');
+const { validarPoligono } = require('../lib/geo');
 
 // Zonas donde se poda Ficus benjamina (calles, plazas, parques).
 // diasSemana: 0 = domingo … 6 = sábado. A partir del horario se generan jornadas.
@@ -52,6 +53,7 @@ router.use(
       lat: { type: 'number', required: true, min: -90, max: 90 },
       lng: { type: 'number', required: true, min: -180, max: 180 },
       radioM: { type: 'number', min: 10, max: 5000 },
+      poligono: { type: 'object' }, // [[lat, lng], ...] dibujado en el mapa (opcional)
       ubicacionConfirmada: { type: 'enum', values: [true, false] }, // false = coordenada provisional
       responsable: { type: 'string' }, // quién poda (ej. Servicios Públicos Municipales)
       puntoDestinoId: { type: 'string', ref: 'puntosAcopio' },
@@ -69,6 +71,7 @@ router.use(
           if (!ok) errores.push('diasSemana debe ser una lista de números 0–6 (0 = domingo)');
         }
         errores.push(...validarHora('horaInicio', data.horaInicio), ...validarHora('horaFin', data.horaFin));
+        errores.push(...validarPoligono(data.poligono));
         return errores;
       },
       roles: ['municipio'],

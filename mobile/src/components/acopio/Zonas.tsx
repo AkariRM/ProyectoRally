@@ -8,7 +8,8 @@ import type { Jornada, Municipio, TipoMaterial, ZonaPoda } from '@/lib/types';
 import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
 import ModalPasos from '@/components/ModalPasos';
-import SelectorUbicacion from '@/components/SelectorUbicacion';
+import SelectorZona from '@/components/SelectorZona';
+import { centroYRadio, esPoligono, type Poligono } from '@/lib/geo';
 import {
   aYyyyMmDd, Aviso, Boton, BotonChico, Campo, colores, DIAS_SEMANA, fechaCorta,
   ListaDesplegable, Opciones, OpcionesMultiples, Seccion, Tarjeta,
@@ -108,6 +109,7 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
   const [tipo, setTipo] = useState<(typeof TIPOS)[number] | null>(zona?.tipo ?? 'calle');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(zona ? { lat: zona.lat, lng: zona.lng } : null);
   const [radio, setRadio] = useState(String(zona?.radioM ?? 150));
+  const [poligono, setPoligono] = useState<Poligono>(zona?.poligono ?? []);
   const [dias, setDias] = useState<number[]>(zona?.diasSemana ?? []);
   const [horaInicio, setHoraInicio] = useState(zona?.horaInicio ?? '08:00');
   const [horaFin, setHoraFin] = useState(zona?.horaFin ?? '12:00');
@@ -118,11 +120,15 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
   const [enviando, setEnviando] = useState(false);
 
   const guardar = async () => {
-    if (!coords) return alerta('Falta ubicación', 'Toca el mapa para marcar la zona o usa tu ubicación.');
+    if (!coords && !esPoligono(poligono)) return alerta('Falta ubicación', 'Toca el mapa para marcar la zona o usa tu ubicación.');
     setEnviando(true);
+    // Con polígono dibujado, el centro y el radio se calculan para que lo cubran
+    const ubicacion = esPoligono(poligono)
+      ? { ...centroYRadio(poligono), poligono }
+      : { lat: coords!.lat, lng: coords!.lng, radioM: Number(radio), poligono: zona?.poligono?.length ? [] : undefined };
     const datos: Partial<ZonaPoda> = {
-      nombre, municipio: municipio ?? undefined, tipo: tipo ?? undefined, lat: coords.lat, lng: coords.lng,
-      radioM: Number(radio), diasSemana: dias, horaInicio, horaFin, responsable,
+      nombre, municipio: municipio ?? undefined, tipo: tipo ?? undefined, ...ubicacion,
+      diasSemana: dias, horaInicio, horaFin, responsable,
       ubicacionConfirmada: confirmada === 'sí',
       puntoDestinoId: destino ?? undefined, notas,
     };
@@ -159,20 +165,27 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
         },
         {
           titulo: 'Ubicación',
-          falta: coords ? null : 'Toca el mapa para marcar la zona o usa tu ubicación',
+          falta: coords || esPoligono(poligono) ? null : 'Marca el centro en el mapa o dibuja la zona',
           contenido: (
             <>
-              <SelectorUbicacion
-                etiqueta="Centro de la zona"
-                valor={coords}
+              <SelectorZona
+                centro={coords}
+                radioM={Number(radio) || 0}
+                poligono={poligono}
                 motivo="marcar la zona de poda"
-                onChange={c => {
+                onCentro={c => {
                   setCoords(c);
                   setConfirmada('sí'); // marcada en el mapa o con GPS → ubicación real
                 }}
+                onPoligono={p => {
+                  setPoligono(p);
+                  if (esPoligono(p)) setConfirmada('sí');
+                }}
               />
+              {!esPoligono(poligono) ? (
+                <Campo etiqueta="Radio (metros)" value={radio} onChangeText={setRadio} keyboardType="number-pad" />
+              ) : null}
               <Opciones etiqueta="¿Ubicación confirmada?" opciones={['sí', 'no'] as const} valor={confirmada} onChange={setConfirmada} />
-              <Campo etiqueta="Radio (metros)" value={radio} onChangeText={setRadio} keyboardType="number-pad" />
             </>
           ),
         },
@@ -349,7 +362,7 @@ export default function Zonas() {
       <Mapa
         alto={260}
         zonas={zonas.map(z => ({
-          id: z.id, lat: z.lat, lng: z.lng, radioM: z.radioM, titulo: z.nombre,
+          id: z.id, lat: z.lat, lng: z.lng, radioM: z.radioM, poligono: z.poligono, titulo: z.nombre,
           activa: suscritas.includes(z.id), porConfirmar: porConfirmar(z),
         }))}
         puntos={puntos

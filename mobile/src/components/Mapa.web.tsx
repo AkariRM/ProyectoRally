@@ -42,7 +42,13 @@ function geojson(puntos: PuntoMapa[], zonas: ZonaMapa[]) {
       .filter(z => !z.porConfirmar)
       .map(z => ({
         type: 'Feature',
-        geometry: { type: 'Polygon', coordinates: [circulo(z.lat, z.lng, z.radioM)] },
+        // Polígono dibujado ([lat, lng] → [lng, lat]); si no hay, el círculo
+        geometry: {
+          type: 'Polygon',
+          coordinates: [z.poligono && z.poligono.length >= 3
+            ? [...z.poligono, z.poligono[0]].map(([lat, lng]) => [lng, lat])
+            : circulo(z.lat, z.lng, z.radioM)],
+        },
         properties: {
           color: z.color ?? (z.activa ? '#2E7D32' : '#8D6E63'),
           popup: z.titulo ? `<b>${escapar(z.titulo)}</b>` : '',

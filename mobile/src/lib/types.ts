@@ -220,6 +220,7 @@ export interface ZonaPoda {
   lat: number;
   lng: number;
   radioM: number;
+  poligono?: [number, number][]; // [lat, lng] dibujado en el mapa (si no, es un círculo)
   ubicacionConfirmada?: boolean; // false = coordenada provisional
   responsable?: string;
   puntoDestinoId?: string;
