@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { api, BASE_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 import { alerta } from '@/lib/alerta';
 import { useUsuario } from '@/lib/usuario';
 import { Boton, Campo, colores } from '@/components/ui';
@@ -48,7 +48,7 @@ export default function Login() {
               resizeMode="contain"
               accessibilityLabel="Bio Red"
             />
-            <Text style={styles.subtitulo}>Píldoras bióticas con poda urbana{'\n'}Reforestación de Jiquilpan y Sahuayo</Text>
+            <Text style={styles.subtitulo}>Píldoras bióticas con poda urbana</Text>
           </View>
 
           <View style={styles.tarjeta}>
@@ -91,7 +91,6 @@ export default function Login() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.servidor}>Servidor: {BASE_URL}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -109,5 +108,4 @@ const styles = StyleSheet.create({
   cambiar: { marginTop: 12, alignItems: 'center' },
   cambiarTexto: { fontSize: 14, color: colores.textoSuave },
   cambiarLink: { color: colores.verde, fontWeight: '700' },
-  servidor: { fontSize: 11, color: colores.textoSuave, textAlign: 'center', marginTop: 20 },
 });
