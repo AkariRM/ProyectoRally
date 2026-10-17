@@ -3,10 +3,10 @@ import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { api } from '@/lib/api';
 import { alerta } from '@/lib/alerta';
-import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
 import type { Municipio } from '@/lib/types';
 import Mapa from '@/components/Mapa';
+import SelectorUbicacion from '@/components/SelectorUbicacion';
 import { Aviso, Boton, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
 
 const MUNICIPIOS: Municipio[] = ['Jiquilpan', 'Sahuayo', 'Otro'];
@@ -21,7 +21,6 @@ export default function Dispersiones() {
   });
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [buscandoGps, setBuscandoGps] = useState(false);
   const [areaId, setAreaId] = useState<string | null>(null);
   const [zona, setZona] = useState('');
   const [municipio, setMunicipio] = useState<Municipio | null>('Jiquilpan');
@@ -38,13 +37,6 @@ export default function Dispersiones() {
   const nombreLote = Object.fromEntries(lotes.map(l => [l.id, `${l.codigo} · ${nombreEspecie[l.especieId] ?? ''}`]));
   const nombreArea = Object.fromEntries(areas.map(a => [a.id, a.nombre]));
   const area = areas.find(a => a.id === areaId);
-
-  const tomarUbicacion = async () => {
-    setBuscandoGps(true);
-    const ubicacion = await obtenerUbicacion('registrar dónde lanzaste las píldoras');
-    if (ubicacion) setCoords(ubicacion);
-    setBuscandoGps(false);
-  };
 
   const elegirArea = (id: string) => {
     const a = areas.find(x => x.id === id);
@@ -63,7 +55,7 @@ export default function Dispersiones() {
   const enviar = async () => {
     // Sin GPS se usa el centro del área elegida
     const ubicacion = coords ?? (area ? { lat: area.lat, lng: area.lng } : null);
-    if (!ubicacion) return alerta('Falta ubicación', 'Toca "Tomar mi ubicación" o elige un área.');
+    if (!ubicacion) return alerta('Falta ubicación', 'Marca el lugar en el mapa, usa tu ubicación o elige un área.');
     setEnviando(true);
     try {
       await api.crearDispersion({
@@ -101,11 +93,11 @@ export default function Dispersiones() {
       {areas.length ? (
         <Opciones etiqueta="Área a reforestar" opciones={areas.map(a => a.id)} nombres={nombreArea} valor={areaId} onChange={elegirArea} />
       ) : null}
-      <Boton
-        texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : area ? '📍 Tomar mi ubicación (si no, se usa el centro del área)' : '📍 Tomar mi ubicación'}
-        onPress={tomarUbicacion}
-        cargando={buscandoGps}
-        secundario={!!coords}
+      <SelectorUbicacion
+        etiqueta={area && !coords ? 'Dónde se lanzaron (si no marcas, se usa el centro del área)' : 'Dónde se lanzaron'}
+        valor={coords}
+        onChange={setCoords}
+        motivo="registrar dónde lanzaste las píldoras"
       />
       <Campo etiqueta="Zona o paraje" value={zona} onChangeText={setZona} placeholder="Ej: Cerro de San Francisco, ladera norte" />
       <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />

@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/lib/api';
 import { alerta, confirmar } from '@/lib/alerta';
-import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
 import type { AreaReforestacion, Especie, EstadoArea, Municipio, Riesgo } from '@/lib/types';
 import Mapa from '@/components/Mapa';
+import SelectorUbicacion from '@/components/SelectorUbicacion';
 import {
   Aviso, Boton, BotonChico, Campo, colores, Opciones, OpcionesMultiples, Seccion, Tarjeta,
 } from '@/components/ui';
@@ -45,18 +45,16 @@ function FormArea({ area, especies, onListo, onCancelar }: {
   const [notas, setNotas] = useState(area?.notas ?? '');
   const [enviando, setEnviando] = useState(false);
 
-  const usarGps = async () => {
-    const c = await obtenerUbicacion('ubicar el área');
-    if (c) {
-      setCoords(c);
-      setLat(c.lat.toFixed(6));
-      setLng(c.lng.toFixed(6));
-    }
+  const ponerCoords = (c: { lat: number; lng: number }) => {
+    setCoords(c);
+    setLat(c.lat.toFixed(6));
+    setLng(c.lng.toFixed(6));
   };
+  const valorMapa = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)) ? { lat: Number(lat), lng: Number(lng) } : coords;
 
   const guardar = async () => {
     const ubic = lat && lng ? { lat: Number(lat), lng: Number(lng) } : coords;
-    if (!ubic) return alerta('Falta ubicación', 'Usa tu ubicación o escribe latitud y longitud.');
+    if (!ubic) return alerta('Falta ubicación', 'Marca el área en el mapa, usa tu ubicación o escribe latitud y longitud.');
     setEnviando(true);
     const datos: Partial<AreaReforestacion> = {
       nombre, municipio: municipio ?? undefined, lat: ubic.lat, lng: ubic.lng, radioM: Number(radio),
@@ -81,7 +79,7 @@ function FormArea({ area, especies, onListo, onCancelar }: {
       <Text style={styles.formTitulo}>{area ? `Editar: ${area.nombre}` : 'Nueva área a reforestar'}</Text>
       <Campo etiqueta="Nombre" value={nombre} onChangeText={setNombre} placeholder="Ej: Cerro de San Francisco, ladera norte" />
       <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
-      <Boton texto="📍 Usar mi ubicación (centro del área)" onPress={usarGps} secundario />
+      <SelectorUbicacion etiqueta="Centro del área" valor={valorMapa} onChange={ponerCoords} motivo="ubicar el área" />
       <View style={styles.fila}>
         <View style={{ flex: 1 }}><Campo etiqueta="Latitud" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" placeholder="19.98" /></View>
         <View style={{ flex: 1 }}><Campo etiqueta="Longitud" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" placeholder="-102.73" /></View>

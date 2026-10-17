@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/lib/api';
 import { alerta, confirmar } from '@/lib/alerta';
-import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
 import type { Municipio, PuntoAcopio, TipoMaterial } from '@/lib/types';
 import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
 import ModalPasos from '@/components/ModalPasos';
+import SelectorUbicacion from '@/components/SelectorUbicacion';
 import { Aviso, Boton, BotonChico, Campo, colores, fecha, ListaDesplegable, Opciones, Seccion, Tarjeta } from '@/components/ui';
 
 const MUNICIPIOS: Municipio[] = ['Jiquilpan', 'Sahuayo', 'Otro'];
@@ -25,12 +25,10 @@ function FormPunto({ punto, onListo, onCancelar }: { punto?: PuntoAcopio; onList
   const [lng, setLng] = useState(punto?.lng !== undefined ? String(punto.lng) : '');
   const [enviando, setEnviando] = useState(false);
 
-  const usarGps = async () => {
-    const c = await obtenerUbicacion('ubicar el punto de acopio');
-    if (c) {
-      setLat(c.lat.toFixed(6));
-      setLng(c.lng.toFixed(6));
-    }
+  const coords = lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)) ? { lat: Number(lat), lng: Number(lng) } : null;
+  const ponerCoords = (c: { lat: number; lng: number }) => {
+    setLat(c.lat.toFixed(6));
+    setLng(c.lng.toFixed(6));
   };
 
   const guardar = async () => {
@@ -75,7 +73,7 @@ function FormPunto({ punto, onListo, onCancelar }: { punto?: PuntoAcopio; onList
           titulo: 'Ubicación',
           contenido: (
             <>
-              <Boton texto="📍 Usar mi ubicación actual" onPress={usarGps} secundario />
+              <SelectorUbicacion etiqueta="Dónde está el punto" valor={coords} onChange={ponerCoords} motivo="ubicar el punto de acopio" />
               <View style={styles.fila}>
                 <View style={{ flex: 1 }}><Campo etiqueta="Latitud" value={lat} onChangeText={setLat} keyboardType="numbers-and-punctuation" placeholder="19.99" /></View>
                 <View style={{ flex: 1 }}><Campo etiqueta="Longitud" value={lng} onChangeText={setLng} keyboardType="numbers-and-punctuation" placeholder="-102.71" /></View>

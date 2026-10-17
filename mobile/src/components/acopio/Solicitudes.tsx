@@ -8,6 +8,7 @@ import type { EstadoSolicitud, Municipio, ParadaRuta, Solicitud, TipoMaterial } 
 import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
 import ModalPasos from '@/components/ModalPasos';
+import SelectorUbicacion from '@/components/SelectorUbicacion';
 import { Aviso, Boton, BotonChico, Campo, colores, fecha, Opciones, Seccion, Tarjeta } from '@/components/ui';
 import { alerta } from '@/lib/alerta';
 
@@ -126,15 +127,11 @@ function NuevaSolicitud({ onListo, onCerrar }: { onListo: () => void; onCerrar: 
       pasos={[
         {
           titulo: 'Dónde',
-          falta: coords ? null : 'Toca "Tomar mi ubicación" donde está la poda',
+          falta: coords ? null : 'Marca en el mapa dónde está la poda o usa tu ubicación',
           contenido: (
             <>
               <Aviso tipo="info" texto="¿Podaste un ficus en tu casa, negocio o escuela? Pide que pasen por las hojas y ramas." />
-              <Boton
-                texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : '📍 Tomar mi ubicación'}
-                onPress={async () => setCoords(await obtenerUbicacion('indicar dónde está la poda'))}
-                secundario={!!coords}
-              />
+              <SelectorUbicacion etiqueta="¿Dónde está la poda?" valor={coords} onChange={setCoords} motivo="indicar dónde está la poda" />
               <Campo etiqueta="Dirección / referencia" value={direccion} onChangeText={setDireccion} placeholder="Ej: Hidalgo 45, portón verde" />
               <Opciones etiqueta="Municipio" opciones={MUNICIPIOS} valor={municipio} onChange={setMunicipio} />
             </>

@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/lib/api';
 import { actualizarAvisos, avisosDisponibles, guardarZonasConAviso, pedirPermiso, zonasConAviso } from '@/lib/avisos';
-import { obtenerUbicacion } from '@/lib/gps';
 import { useData } from '@/lib/useData';
 import { useUsuario } from '@/lib/usuario';
 import type { Jornada, Municipio, TipoMaterial, ZonaPoda } from '@/lib/types';
 import { nombresDe, useCatalogos } from '@/lib/catalogos';
 import Mapa from '@/components/Mapa';
 import ModalPasos from '@/components/ModalPasos';
+import SelectorUbicacion from '@/components/SelectorUbicacion';
 import {
   aYyyyMmDd, Aviso, Boton, BotonChico, Campo, colores, DIAS_SEMANA, fechaCorta,
   ListaDesplegable, Opciones, OpcionesMultiples, Seccion, Tarjeta,
@@ -118,7 +118,7 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
   const [enviando, setEnviando] = useState(false);
 
   const guardar = async () => {
-    if (!coords) return alerta('Falta ubicación', 'Párate en la zona y toca "Tomar ubicación".');
+    if (!coords) return alerta('Falta ubicación', 'Toca el mapa para marcar la zona o usa tu ubicación.');
     setEnviando(true);
     const datos: Partial<ZonaPoda> = {
       nombre, municipio: municipio ?? undefined, tipo: tipo ?? undefined, lat: coords.lat, lng: coords.lng,
@@ -159,19 +159,17 @@ function FormZona({ zona, puntos, onListo, onCancelar }: {
         },
         {
           titulo: 'Ubicación',
-          falta: coords ? null : 'Párate en la zona y toca "Tomar ubicación"',
+          falta: coords ? null : 'Toca el mapa para marcar la zona o usa tu ubicación',
           contenido: (
             <>
-              <Boton
-                texto={coords ? `📍 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)} · tocar para usar mi ubicación` : '📍 Tomar ubicación (centro de la zona)'}
-                onPress={async () => {
-                  const c = await obtenerUbicacion('marcar la zona de poda');
-                  if (c) {
-                    setCoords(c);
-                    setConfirmada('sí'); // tomada en el lugar → ubicación real
-                  }
+              <SelectorUbicacion
+                etiqueta="Centro de la zona"
+                valor={coords}
+                motivo="marcar la zona de poda"
+                onChange={c => {
+                  setCoords(c);
+                  setConfirmada('sí'); // marcada en el mapa o con GPS → ubicación real
                 }}
-                secundario={!!coords}
               />
               <Opciones etiqueta="¿Ubicación confirmada?" opciones={['sí', 'no'] as const} valor={confirmada} onChange={setConfirmada} />
               <Campo etiqueta="Radio (metros)" value={radio} onChangeText={setRadio} keyboardType="number-pad" />
